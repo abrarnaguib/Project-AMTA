@@ -52,3 +52,6 @@ Thumbs.db
 
 # VS Code settings (optional — remove if sharing .vscode)
 .vscode/
+
+#imgui log file?
+imgui.ini 
