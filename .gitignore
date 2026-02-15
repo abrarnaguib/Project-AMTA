@@ -39,3 +39,16 @@
 
 # debug information files
 *.dwo
+
+# Build directories
+build/
+out/
+
+# macOS system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
+
+# VS Code settings (optional — remove if sharing .vscode)
+.vscode/
