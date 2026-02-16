@@ -16,6 +16,10 @@ namespace GUI
         {
             state.counter++;
         }
+        if (ImGui::Button("Decrement"))
+        {
+            state.counter--;
+        }
 
         ImGui::End();
     }
