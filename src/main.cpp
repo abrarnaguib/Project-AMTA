@@ -1,5 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <filesystem>
+#include <iostream>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -8,8 +10,8 @@
 #include "core/app.h"
 #include "gui/gui.h"
 
-int main()
-{
+int main() {
+    std::cout << "[CWD] " << std::filesystem::current_path() << "\n";
     glfwInit();
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -41,8 +43,7 @@ int main()
 
     App app;
 
-    while (!glfwWindowShouldClose(window))
-    {
+    while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
         ImGui_ImplOpenGL3_NewFrame();
