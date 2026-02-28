@@ -24,6 +24,10 @@ namespace GUI
         {
             state.counter *= 2;
         }
+        if (ImGui::Button("Divide")) 
+        {
+            state.counter /= 2;
+        }
         ImGui::End();
     }
 }
