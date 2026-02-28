@@ -3,21 +3,6 @@
 #include <vector>
 #include <stdexcept>
 
-class ProductException : public std::runtime_error {
-public:
-    explicit ProductException(const std::string& msg) : std::runtime_error(msg) {}
-};
-
-struct Review {
-    int         reviewerId;
-    std::string comment;
-    int         rating;
-
-    std::string Serialize() const;
-    static Review Deserialize(const std::string& line);
-};
-
-
 class Product {
 public:
     Product(int productId, int dealerId, const std::string& name,
@@ -59,4 +44,18 @@ private:
     static void ValidatePrice(double price);
     static void ValidateStock(int stock);
     static void ValidateName(const std::string& name);
+};
+
+struct Review {
+    int         reviewerId;
+    std::string comment;
+    int         rating;
+
+    std::string Serialize() const;
+    static Review Deserialize(const std::string& line);
+};
+
+class ProductException : public std::runtime_error {
+public:
+    explicit ProductException(const std::string& msg) : std::runtime_error(msg) {}
 };

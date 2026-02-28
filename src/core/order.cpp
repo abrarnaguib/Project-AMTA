@@ -1,43 +1,6 @@
 #include "order.h"
 #include <sstream>
 
-std::string OrderStatusToString(OrderStatus status)
-{
-    switch (status)
-    {
-    case OrderStatus::PENDING:
-        return "PENDING";
-    case OrderStatus::ACCEPTED:
-        return "ACCEPTED";
-    case OrderStatus::REJECTED:
-        return "REJECTED";
-    case OrderStatus::COMPLETED:
-        return "COMPLETED";
-    }
-    return "UNKNOWN";
-}
-
-OrderStatus StringToOrderStatus(const std::string &str)
-{
-    if (str == "PENDING")
-        return OrderStatus::PENDING;
-    if (str == "ACCEPTED")
-        return OrderStatus::ACCEPTED;
-    if (str == "REJECTED")
-        return OrderStatus::REJECTED;
-    if (str == "COMPLETED")
-        return OrderStatus::COMPLETED;
-    throw OrderException("Unknown order status: " + str);
-}
-
-void Order::ValidateQuantity(int qty)
-{
-    if (qty <= 0)
-        throw OrderException("Order quantity must be at least 1.");
-    if (qty > 10000)
-        throw OrderException("Order quantity exceeds maximum (10000).");
-}
-
 Order::Order(int orderId, int retailerId, int dealerId,
              int productId, int quantity)
     : m_orderId(orderId), m_retailerId(retailerId), m_dealerId(dealerId),
@@ -71,6 +34,14 @@ void Order::Complete()
     if (m_status != OrderStatus::ACCEPTED)
         throw OrderException("Only ACCEPTED orders can be marked complete.");
     m_status = OrderStatus::COMPLETED;
+}
+
+void Order::ValidateQuantity(int qty)
+{
+    if (qty <= 0)
+        throw OrderException("Order quantity must be at least 1.");
+    if (qty > 10000)
+        throw OrderException("Order quantity exceeds maximum (10000).");
 }
 
 std::string Order::Serialize() const
@@ -114,4 +85,33 @@ std::string Order::ToString() const
         << " Qty:" << m_quantity
         << " Status:" << OrderStatusToString(m_status);
     return oss.str();
+}
+
+std::string OrderStatusToString(OrderStatus status)
+{
+    switch (status)
+    {
+    case OrderStatus::PENDING:
+        return "PENDING";
+    case OrderStatus::ACCEPTED:
+        return "ACCEPTED";
+    case OrderStatus::REJECTED:
+        return "REJECTED";
+    case OrderStatus::COMPLETED:
+        return "COMPLETED";
+    }
+    return "UNKNOWN";
+}
+
+OrderStatus StringToOrderStatus(const std::string &str)
+{
+    if (str == "PENDING")
+        return OrderStatus::PENDING;
+    if (str == "ACCEPTED")
+        return OrderStatus::ACCEPTED;
+    if (str == "REJECTED")
+        return OrderStatus::REJECTED;
+    if (str == "COMPLETED")
+        return OrderStatus::COMPLETED;
+    throw OrderException("Unknown order status: " + str);
 }

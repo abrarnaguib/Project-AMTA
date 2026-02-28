@@ -2,12 +2,6 @@
 #include <string>
 #include <stdexcept>
 
-class OrderException : public std::runtime_error
-{
-public:
-    explicit OrderException(const std::string &msg) : std::runtime_error(msg) {}
-};
-
 enum class OrderStatus
 {
     PENDING,
@@ -15,9 +9,6 @@ enum class OrderStatus
     REJECTED,
     COMPLETED
 };
-
-std::string OrderStatusToString(OrderStatus status);
-OrderStatus StringToOrderStatus(const std::string &str);
 
 class Order
 {
@@ -51,4 +42,13 @@ private:
     OrderStatus m_status;
 
     static void ValidateQuantity(int qty);
+};
+
+std::string OrderStatusToString(OrderStatus status);
+OrderStatus StringToOrderStatus(const std::string &str);
+
+class OrderException : public std::runtime_error
+{
+public:
+    explicit OrderException(const std::string &msg) : std::runtime_error(msg) {}
 };

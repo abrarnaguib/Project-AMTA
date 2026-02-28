@@ -4,49 +4,6 @@
 #include <algorithm>
 #include <iomanip>
 
-std::string Review::Serialize() const
-{
-    std::ostringstream oss;
-    std::string safe = comment;
-    std::replace(safe.begin(), safe.end(), '|', ' ');
-    oss << reviewerId << "|" << rating << "|" << safe;
-    return oss.str();
-}
-
-Review Review::Deserialize(const std::string &line)
-{
-    std::istringstream iss(line);
-    std::string token;
-    Review r;
-    std::getline(iss, token, '|');
-    r.reviewerId = std::stoi(token);
-    std::getline(iss, token, '|');
-    r.rating = std::stoi(token);
-    std::getline(iss, token);
-    r.comment = token;
-    return r;
-}
-
-void Product::ValidatePrice(double price)
-{
-    if (price < 0.0)
-        throw ProductException("Price cannot be negative.");
-}
-
-void Product::ValidateStock(int stock)
-{
-    if (stock < 0)
-        throw ProductException("Stock cannot be negative.");
-}
-
-void Product::ValidateName(const std::string &name)
-{
-    if (name.empty())
-        throw ProductException("Product name cannot be empty.");
-    if (name.size() > 120)
-        throw ProductException("Product name too long (max 120 chars).");
-}
-
 Product::Product(int productId, int dealerId, const std::string &name,
                  const std::string &category, double price, int stock)
     : m_productId(productId), m_dealerId(dealerId),
@@ -116,6 +73,26 @@ float Product::GetAvgRating() const
     return sum / static_cast<float>(m_reviews.size());
 }
 
+void Product::ValidatePrice(double price)
+{
+    if (price < 0.0)
+        throw ProductException("Price cannot be negative.");
+}
+
+void Product::ValidateStock(int stock)
+{
+    if (stock < 0)
+        throw ProductException("Stock cannot be negative.");
+}
+
+void Product::ValidateName(const std::string &name)
+{
+    if (name.empty())
+        throw ProductException("Product name cannot be empty.");
+    if (name.size() > 120)
+        throw ProductException("Product name too long (max 120 chars).");
+}
+
 std::string Product::Serialize() const
 {
     std::ostringstream oss;
@@ -157,4 +134,27 @@ std::string Product::ToString() const
         << " BDT | Stock: " << m_stock
         << " | Rating: " << std::setprecision(1) << GetAvgRating() << "/5";
     return oss.str();
+}
+
+std::string Review::Serialize() const
+{
+    std::ostringstream oss;
+    std::string safe = comment;
+    std::replace(safe.begin(), safe.end(), '|', ' ');
+    oss << reviewerId << "|" << rating << "|" << safe;
+    return oss.str();
+}
+
+Review Review::Deserialize(const std::string &line)
+{
+    std::istringstream iss(line);
+    std::string token;
+    Review r;
+    std::getline(iss, token, '|');
+    r.reviewerId = std::stoi(token);
+    std::getline(iss, token, '|');
+    r.rating = std::stoi(token);
+    std::getline(iss, token);
+    r.comment = token;
+    return r;
 }
