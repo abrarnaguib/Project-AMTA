@@ -20,7 +20,10 @@ namespace GUI
         {
             state.counter--;
         }
-
+        if (ImGui::Button("Multiply")) 
+        {
+            state.counter *= 2;
+        }
         ImGui::End();
     }
 }
