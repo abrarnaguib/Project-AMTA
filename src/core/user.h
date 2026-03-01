@@ -24,7 +24,8 @@ private:
 public:
     User(int userId, const std::string& username, const std::string& passwordHash, UserRole role);
 
-    // Derived class must inherit
+    // Derived class must inherit 
+    // Debugging Helper
     virtual std::string GetDashboardInfo() const = 0;
     
     // Concrete shared behaviour
@@ -46,7 +47,7 @@ public:
     // Serialization helper for database
     virtual std::string Serialize() const;
 
-    // 
+    // Password encryption
     static std::string HashPassword(const std::string& plain);
 
     virtual ~User() = default;
@@ -54,7 +55,7 @@ public:
 };
 
 
-// Helper Functions
+// Helper Functions (data type converter)
 std::string RoleToString(UserRole role);
 UserRole StringToRole(const std::string& str);
 

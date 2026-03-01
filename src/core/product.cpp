@@ -4,51 +4,45 @@
 #include <algorithm>
 #include <iomanip>
 
-Product::Product(int productId, int dealerId, const std::string &name,
-                 const std::string &category, double price, int stock)
-    : m_productId(productId), m_dealerId(dealerId),
-      m_name(name), m_category(category), m_price(price), m_stock(stock)
-{
+Product::Product(int productId, int dealerId, const std::string &name, const std::string &category, double price, int stock)
+                : m_productId(productId), m_dealerId(dealerId), m_name(name), m_category(category), m_price(price), m_stock(stock) 
+                {
     ValidateName(name);
     ValidatePrice(price);
     ValidateStock(stock);
 }
 
-void Product::SetName(const std::string &name)
-{
+// Setter definitions
+void Product::SetName(const std::string &name) { 
     ValidateName(name);
     m_name = name;
 }
 
-void Product::SetCategory(const std::string &category)
-{
+void Product::SetCategory(const std::string &category) {
     if (category.empty())
         throw ProductException("Category cannot be empty.");
     m_category = category;
 }
 
-void Product::SetPrice(double price)
-{
+void Product::SetPrice(double price) {
     ValidatePrice(price);
     m_price = price;
 }
 
-void Product::SetStock(int stock)
-{
+void Product::SetStock(int stock) {
     ValidateStock(stock);
     m_stock = stock;
 }
 
-void Product::UpdateStock(int delta)
-{
+// Stock methods
+void Product::UpdateStock(int delta) {
     int newStock = m_stock + delta;
     if (newStock < 0)
         throw ProductException("Stock cannot go below zero.");
     m_stock = newStock;
 }
 
-void Product::DeductStock(int quantity)
-{
+void Product::DeductStock(int quantity) {
     if (quantity <= 0)
         throw ProductException("Quantity to deduct must be positive.");
     if (quantity > m_stock)
@@ -56,15 +50,14 @@ void Product::DeductStock(int quantity)
     m_stock -= quantity;
 }
 
-void Product::AddReview(const Review &review)
-{
+// Review Methods
+void Product::AddReview(const Review &review) {
     if (review.rating < 1 || review.rating > 5)
         throw ProductException("Rating must be between 1 and 5.");
     m_reviews.push_back(review);
 }
 
-float Product::GetAvgRating() const
-{
+float Product::GetAvgRating() const {
     if (m_reviews.empty())
         return 0.0f;
     float sum = 0;
@@ -73,38 +66,32 @@ float Product::GetAvgRating() const
     return sum / static_cast<float>(m_reviews.size());
 }
 
-void Product::ValidatePrice(double price)
-{
+// Constraint Methods
+void Product::ValidatePrice(double price) {
     if (price < 0.0)
         throw ProductException("Price cannot be negative.");
 }
 
-void Product::ValidateStock(int stock)
-{
+void Product::ValidateStock(int stock) {
     if (stock < 0)
         throw ProductException("Stock cannot be negative.");
 }
 
-void Product::ValidateName(const std::string &name)
-{
+void Product::ValidateName(const std::string &name) {
     if (name.empty())
         throw ProductException("Product name cannot be empty.");
     if (name.size() > 120)
         throw ProductException("Product name too long (max 120 chars).");
 }
 
-std::string Product::Serialize() const
-{
+// Product Parsers for database (.tsv based)
+std::string Product::Serialize() const {
     std::ostringstream oss;
-    oss << m_productId << "\t" << m_dealerId << "\t"
-        << m_name << "\t" << m_category << "\t"
-        << std::fixed << std::setprecision(2) << m_price << "\t"
-        << m_stock;
+    oss << m_productId << "\t" << m_dealerId << "\t" << m_name << "\t" << m_category << "\t" << std::fixed << std::setprecision(2) << m_price << "\t" << m_stock;
     return oss.str();
 }
 
-Product Product::Deserialize(const std::string &line)
-{
+Product Product::Deserialize(const std::string &line) {
     std::istringstream iss(line);
     std::string token;
     int pid, did, stock;
@@ -125,19 +112,16 @@ Product Product::Deserialize(const std::string &line)
     return Product(pid, did, name, category, price, stock);
 }
 
-std::string Product::ToString() const
-{
+// Debugging Helper
+std::string Product::ToString() const {
     std::ostringstream oss;
-    oss << "[" << m_productId << "] " << m_name
-        << " | Category: " << m_category
-        << " | Price: " << std::fixed << std::setprecision(2) << m_price
-        << " BDT | Stock: " << m_stock
-        << " | Rating: " << std::setprecision(1) << GetAvgRating() << "/5";
+    oss << "[" << m_productId << "] " << m_name << " | Category: " << m_category << " | Price: " << std::fixed << std::setprecision(2) << m_price
+        << " BDT | Stock: " << m_stock << " | Rating: " << std::setprecision(1) << GetAvgRating() << "/5";
     return oss.str();
 }
 
-std::string Review::Serialize() const
-{
+// Review Parsers for Database
+std::string Review::Serialize() const {
     std::ostringstream oss;
     std::string safe = comment;
     std::replace(safe.begin(), safe.end(), '|', ' ');
@@ -145,8 +129,7 @@ std::string Review::Serialize() const
     return oss.str();
 }
 
-Review Review::Deserialize(const std::string &line)
-{
+Review Review::Deserialize(const std::string &line) {
     std::istringstream iss(line);
     std::string token;
     Review r;

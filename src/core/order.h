@@ -2,37 +2,15 @@
 #include <string>
 #include <stdexcept>
 
-enum class OrderStatus
-{
+// Operations
+enum class OrderStatus {
     PENDING,
     ACCEPTED,
     REJECTED,
     COMPLETED
 };
 
-class Order
-{
-public:
-    Order(int orderId, int retailerId, int dealerId,
-          int productId, int quantity);
-
-    void Accept();
-    void Reject();
-    void Complete();
-
-    int GetOrderId() const { return m_orderId; }
-    int GetRetailerId() const { return m_retailerId; }
-    int GetDealerId() const { return m_dealerId; }
-    int GetProductId() const { return m_productId; }
-    int GetQuantity() const { return m_quantity; }
-    OrderStatus GetStatus() const { return m_status; }
-    std::string GetStatusStr() const { return OrderStatusToString(m_status); }
-
-    std::string Serialize() const;
-    static Order Deserialize(const std::string &line);
-
-    std::string ToString() const;
-
+class Order {
 private:
     int m_orderId;
     int m_retailerId;
@@ -41,14 +19,54 @@ private:
     int m_quantity;
     OrderStatus m_status;
 
+    // Constraint Helpers
     static void ValidateQuantity(int qty);
+
+public:
+    Order(int orderId, int retailerId, int dealerId, int productId, int quantity);
+
+    // Order Operations
+    void Accept();
+    void Reject();
+    void Complete();
+
+    // Getters
+    int GetOrderId() const { 
+        return m_orderId; 
+    }
+    int GetRetailerId() const { 
+        return m_retailerId; 
+    }
+    int GetDealerId() const { 
+        return m_dealerId; 
+    }
+    int GetProductId() const { 
+        return m_productId; 
+    }
+    int GetQuantity() const { 
+        return m_quantity; 
+    }
+    OrderStatus GetStatus() const { 
+        return m_status; 
+    }
+    std::string GetStatusStr() const { 
+        return OrderStatusToString(m_status); 
+    }
+
+    // Helper for database (.tsv file based)
+    std::string Serialize() const;
+    static Order Deserialize(const std::string &line);
+
+    // Debugging Helper
+    std::string ToString() const;
 };
 
+// Helper Functions (data type converter)
 std::string OrderStatusToString(OrderStatus status);
 OrderStatus StringToOrderStatus(const std::string &str);
 
-class OrderException : public std::runtime_error
-{
+// Exceptions
+class OrderException : public std::runtime_error {
 public:
     explicit OrderException(const std::string &msg) : std::runtime_error(msg) {}
 };

@@ -58,16 +58,22 @@ void User::ValidateUsername(const std::string& username) {
 //  Helpers function implementation
 std::string RoleToString(UserRole role) {
     switch (role) {
-        case UserRole::RETAILER: return "RETAILER";
-        case UserRole::DEALER:   return "DEALER";
-        case UserRole::ADMIN:    return "ADMIN";
+        case UserRole::RETAILER: 
+            return "RETAILER";
+        case UserRole::DEALER:   
+            return "DEALER";
+        case UserRole::ADMIN:    
+            return "ADMIN";
     }
     return "UNKNOWN";
 }
 
 UserRole StringToRole(const std::string& str) {
-    if (str == "RETAILER") return UserRole::RETAILER;
-    if (str == "DEALER")   return UserRole::DEALER;
-    if (str == "ADMIN")    return UserRole::ADMIN;
+    if (str == "RETAILER") 
+        return UserRole::RETAILER;
+    if (str == "DEALER")   
+        return UserRole::DEALER;
+    if (str == "ADMIN")     
+        return UserRole::ADMIN;
     throw ValidationException("Unknown role string: " + str);
 }
