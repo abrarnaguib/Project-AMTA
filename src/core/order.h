@@ -10,6 +10,10 @@ enum class OrderStatus {
     COMPLETED
 };
 
+// Helper Functions (data type converter)
+std::string OrderStatusToString(OrderStatus status);
+OrderStatus StringToOrderStatus(const std::string &str);
+
 class Order {
 private:
     int m_orderId;
@@ -61,9 +65,7 @@ public:
     std::string ToString() const;
 };
 
-// Helper Functions (data type converter)
-std::string OrderStatusToString(OrderStatus status);
-OrderStatus StringToOrderStatus(const std::string &str);
+
 
 // Exceptions
 class OrderException : public std::runtime_error {

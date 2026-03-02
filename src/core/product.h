@@ -3,6 +3,17 @@
 #include <vector>
 #include <stdexcept>
 
+
+struct Review {
+    int reviewerId;
+    std::string comment;
+    int rating;
+
+    std::string Serialize() const;
+    static Review Deserialize(const std::string& line);
+};
+
+
 class Product {
 private:
     int m_productId;
@@ -65,14 +76,6 @@ public:
 };
 
 
-struct Review {
-    int reviewerId;
-    std::string comment;
-    int rating;
-
-    std::string Serialize() const;
-    static Review Deserialize(const std::string& line);
-};
 
 // Exceptions
 class ProductException : public std::runtime_error {
