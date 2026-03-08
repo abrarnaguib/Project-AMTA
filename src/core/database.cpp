@@ -263,3 +263,96 @@ Dealer* Database::GetDealer(int userId) const {
 Retailer* Database::GetRetailer(int userId) const {
     return dynamic_cast<Retailer*>(FindUserById(userId));
 }
+
+// verifies dealer and adds product to global product list as well as dealer's list
+Product* Database::AddProduct(int dealerId, const std::string &name, const std::string &category, double price, int stock) {
+    Dealer* d = GetDealer(dealerId);
+    if (!d) {
+        throw DatabaseException("Dealer ID " + std::to_string(dealerId) + " not found.\n");
+    }
+    m_products.push_back(m_nextProductId++, dealerId, name, category, price, stock);
+    Product* p = &m_products.back();
+    d->AddProduct(*p);
+    SaveAll();
+    return p;
+}
+// finds the product, deletes from both dealer's list as well as global list
+void Database::DeleteProduct(int productId) {
+    auto it = std::find_if(m_products.begin(), m_products.end(), [productId] (const Product &p) {
+        return p.GetProductId() == productId;
+    });
+    if (it == m_products.end()) {
+        throw ProductException("Product ID " + std::to_string(productId) + " not found.\n");
+    }
+    Dealer* d = GetDealer(it->GetDealerId());
+    if (d) {
+        d->RemoveProduct(productId);
+    }
+    m_products.erase(it);
+    SaveAll();
+}
+// looks for all product and returns the matching one
+Product* Database::FindProduct(int productId) const {
+    for (auto &p: const_case<std::vector<Product>&> (m_products)) {
+        if (p.GetProductId() == productId) {
+            return &p;
+        }
+    }
+    return nullptr;
+}
+// verifies retailer, dealer and product. deducts if product exists
+Order* Database::PlaceOrder(int retailerId, int dealerId, int productId, int quantity) {
+    Retailer* r = GetRetailer(retailerId);
+    if (!r) {
+        throw DatabaseException("Retailer ID " + std::to_string(retailerId) + " not found.\n");
+    }
+    Dealer* d = GetDealer(dealerId);
+    if (!d) {
+        throw DatabaseException("Dealer ID " + std::to_string(dealerId) + " not found.\n");
+    }
+    Product* p = FindProduct(productId);
+    if (!p) {
+        throw DatabaseException("Product ID " + std::to_string(productId) + " not found.\n");
+    }
+    p->DeductStock(quantity);
+    m_orders.push_back(m_nextOrderId++, retailerId, dealerId, productId, quantity);
+    Order* o = &m_orders.back();
+    d->AddIncomingOrder(*o);
+    r->AddOrderToHistory(*o);
+    SaveAll();
+    return o;
+}
+// correct authorization of the dealer
+void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
+    Order* o = FindOrder(orderId);
+    if (!o) {
+        throw OrderException("Order ID " + std::to_string(orderId) + " not found.\n");
+    }
+    if (o->GetDealerId() != dealerId) {
+        throw AuthException("You are not authorized to respond to this order.\n");
+    }
+    if (accept) {
+        o->Accept();
+    }
+    else {
+        o->Reject();
+    }
+    SaveAll();
+}
+// marks the order as completed
+void Database::CompleteOrder(int orderId) {
+    Order* o = FindOrder(orderId);
+    if (!o) {
+        throw OrderException("Order ID " + std::to_string(orderId) + " not found.\n");
+    }
+    o->Complete();
+    SaveAll();
+}
+Order* Database::FindOrder(int orderId) const {
+    for (auto &o: const_cast<std::vector<Order>&> (m_orders)) {
+        if (o.GetOrderId() == orderId) {
+            return &o;
+        }
+    }
+    return nullptr;
+}
