@@ -65,7 +65,7 @@ private:
     int m_nextOrderId = 1;
 
     // helper functions: returns the file paths only
-    std::string UserFile() const; // deals with retailers, dealers, admins 
+    std::string UsersFile() const; // deals with retailers, dealers, admins 
     std::string ProductsFile() const; // deals with all the product items
     std::string OrdersFile() const; // deals with all the placed orders
 

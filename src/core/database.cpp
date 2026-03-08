@@ -9,7 +9,7 @@
 std::string Database::UsersFile() const {
     return m_dataDir + "/users.tsv";
 }
-std::string Database::ProductFile() const {
+std::string Database::ProductsFile() const {
     return m_dataDir + "/products.tsv";
 } 
 std::string Database::OrdersFile() const {
@@ -61,7 +61,7 @@ void Database::SaveAll() const {
 
 // reads from the .tsv file format
 void Database::LoadUsers() {
-    std::ifsteram f(UsersFile());
+    std::ifstream f(UsersFile());
     if (!f) {
         return ;
     }
@@ -177,7 +177,7 @@ void Database::SaveProducts() const {
         throw DatabaseException("Cannot open products file for writing.\n");
     }
     for (const auto &p: m_products) {
-        f << p->Serialize() << '\n';
+        f << p.Serialize() << '\n';
     }
 }
 // same procedure
@@ -187,7 +187,7 @@ void Database::SaveOrders() const {
         throw DatabaseException("Cannot open orders file for writing.\n");
     }
     for (const auto &o: m_orders) {
-        f << o->Serialize() << '\n';
+        f << o.Serialize() << '\n';
     }
 }
 
@@ -270,7 +270,7 @@ Product* Database::AddProduct(int dealerId, const std::string &name, const std::
     if (!d) {
         throw DatabaseException("Dealer ID " + std::to_string(dealerId) + " not found.\n");
     }
-    m_products.push_back(m_nextProductId++, dealerId, name, category, price, stock);
+    m_products.push_back({m_nextProductId++, dealerId, name, category, price, stock});
     Product* p = &m_products.back();
     d->AddProduct(*p);
     SaveAll();
@@ -293,7 +293,7 @@ void Database::DeleteProduct(int productId) {
 }
 // looks for all product and returns the matching one
 Product* Database::FindProduct(int productId) const {
-    for (auto &p: const_case<std::vector<Product>&> (m_products)) {
+    for (auto &p: const_cast<std::vector<Product>&> (m_products)) {
         if (p.GetProductId() == productId) {
             return &p;
         }
@@ -315,7 +315,7 @@ Order* Database::PlaceOrder(int retailerId, int dealerId, int productId, int qua
         throw DatabaseException("Product ID " + std::to_string(productId) + " not found.\n");
     }
     p->DeductStock(quantity);
-    m_orders.push_back(m_nextOrderId++, retailerId, dealerId, productId, quantity);
+    m_orders.push_back({m_nextOrderId++, retailerId, dealerId, productId, quantity});
     Order* o = &m_orders.back();
     d->AddIncomingOrder(*o);
     r->AddOrderToHistory(*o);
