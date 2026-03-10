@@ -18,6 +18,16 @@ target_link_libraries(BABATALAL PRIVATE
     OpenGL::GL
 )
 
+# windows dll issue fixes for windows
+if(WIN32)
+    set_target_properties(BABATALAL PROPERTIES
+        LINK_FLAGS "-static-libgcc -static-libstdc++ -static"
+    )
+    # Link Windows system libs explicitly to avoid dynamic lookups
+    target_link_libraries(BABATALAL PRIVATE gdi32 winmm imm32)
+endif()
+
+
 # macOS frameworks
 if(APPLE)
     target_link_libraries(BABATALAL PRIVATE
