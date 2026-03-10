@@ -146,15 +146,54 @@ bool App::UpdateProduct(int productId, double newPrice, int newStock)
 // Orders
 bool App::PlaceOrder(int productId, int quantity)
 {
-    return false;
+    m_state.ClearMessages();
+    if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::RETAILER) {
+        m_state.errorMessage = "Only logged-in retailers can place orders.";
+        return false;
+    }
+    try {
+        Product* p = m_db.FindProduct(productId);
+        if (!p) { m_state.errorMessage = "Product not found."; return false; }
+        m_db.PlaceOrder(m_state.currentUser->GetUserId(),
+                        p->GetDealerId(), productId, quantity);
+        m_state.infoMessage = "Order placed successfully!";
+        return true;
+    } catch (const std::exception& e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
 }
 
 bool App::AcceptOrder(int orderId)
 {
-    return false;
+    m_state.ClearMessages();
+    if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::DEALER) {
+        m_state.errorMessage = "Only dealers can accept orders.";
+        return false;
+    }
+    try {
+        m_db.RespondToOrder(orderId, m_state.currentUser->GetUserId(), true);
+        m_state.infoMessage = "Order accepted.";
+        return true;
+    } catch (const std::exception& e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
 }
 
 bool App::RejectOrder(int orderId)
 {
-    return false;
+    m_state.ClearMessages();
+    if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::DEALER) {
+        m_state.errorMessage = "Only dealers can reject orders.";
+        return false;
+    }
+    try {
+        m_db.RespondToOrder(orderId, m_state.currentUser->GetUserId(), false);
+        m_state.infoMessage = "Order rejected.";
+        return true;
+    } catch (const std::exception& e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
 }
