@@ -21,7 +21,7 @@ public:
 // file-based persistence layer and saved as .tsv
 class Database {
 public:
-    explicit Database(const std::string &dataDir = "data");
+    explicit Database(const std::string &dataDir = "../../data");
     
     // reads and writes files
     void LoadAll();

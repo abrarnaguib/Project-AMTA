@@ -1,10 +1,13 @@
-#include <direct.h>
 #include "database.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <sys/stat.h>
 #include <algorithm>
+#ifdef _WIN32
+#include <direct.h> // For _mkdir on Windows
+#else
+#include <sys/stat.h> // For mkdir on macOS/Linux
+#endif
 
 // file path helpers
 std::string Database::UsersFile() const {
@@ -19,9 +22,9 @@ std::string Database::OrdersFile() const {
 
 void Database::EnsureDataDir() const {
     #ifdef _WIN32
-        _mkdir(m_dataDir.c_str());
+        _mkdir(m_dataDir.c_str()); // For Windows
     #else 
-        mkdir(m_dataDir.c_str(), 0755); // for linux permission
+        mkdir(m_dataDir.c_str(), 0755); // For macOS/Linux
     #endif
 }
 

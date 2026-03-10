@@ -1,7 +1,7 @@
 #include "app.h"
 #include <iostream>
 
-App::App() : m_db("data")
+App::App() : m_db("../../data")
 {
     try
     {
