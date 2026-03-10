@@ -15,7 +15,7 @@ App::App() : m_db("data")
 
 void App::Update()
 {
-    // Per-frame logic 
+    // Per-frame logic
 }
 
 // Auth
@@ -80,17 +80,67 @@ void App::Logout()
 bool App::AddProduct(const std::string &name, const std::string &category,
                      double price, int stock)
 {
-    return false;
+    m_state.ClearMessages();
+    if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::DEALER)
+    {
+        m_state.errorMessage = "Only logged-in dealers can add products.";
+        return false;
+    }
+    try
+    {
+        m_db.AddProduct(m_state.currentUser->GetUserId(), name, category, price, stock);
+        m_state.infoMessage = "Product '" + name + "' added.";
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        m_state.errorMessage = e.what();
+        return false;
+    }
 }
 
 bool App::DeleteProduct(int productId)
 {
-    return false;
+    m_state.ClearMessages();
+    try
+    {
+        m_db.DeleteProduct(productId);
+        m_state.infoMessage = "Product deleted.";
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        m_state.errorMessage = e.what();
+        return false;
+    }
 }
 
 bool App::UpdateProduct(int productId, double newPrice, int newStock)
 {
-    return false;
+    m_state.ClearMessages();
+    if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::DEALER)
+    {
+        m_state.errorMessage = "Only dealers can update products.";
+        return false;
+    }
+    try
+    {
+        Dealer *d = m_db.GetDealer(m_state.currentUser->GetUserId());
+        if (!d)
+        {
+            m_state.errorMessage = "Dealer not found.";
+            return false;
+        }
+        d->UpdateProduct(productId, newPrice, newStock);
+        m_db.SaveAll();
+        m_state.infoMessage = "Product updated.";
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        m_state.errorMessage = e.what();
+        return false;
+    }
 }
 
 // Orders
