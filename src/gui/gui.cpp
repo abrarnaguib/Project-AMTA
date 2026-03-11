@@ -1,6 +1,7 @@
 #include "gui.h"
 #include "../core/app.h"
 #include "imgui.h"
+#include<string>
 
 
 
@@ -11,20 +12,47 @@ static void RenderRegisterPage (App &app);
 static void RenderDashBoard (App &app);
 static void RenderProductList (App &app);
 static void RenderPlaceOrderPage (App &app);
+static void RenderUtilBar (App &app); // Render the top utility bar (account info, login logout buttons etc.)
+static void RenderStatusBar(App &app);  // Render the bottom action status bar (wrong input, wrong password etc.)
 
 
-namespace GUI
-{
-    void Render(App& app)
-    {
+// colour palette 
+// color vectors
+static const ImVec4 COL_ACCENT { 0.20f, 0.60f, 1.00f, 1.00f }; // blue
+static const ImVec4 COL_SUCCESS { 0.18f, 0.80f, 0.44f, 1.00f }; // green
+static const ImVec4 COL_DANGER { 0.90f, 0.25f, 0.25f, 1.00f }; // red
+
+// Helper functions for pushing a styled button colour
+// remember to pop after use ( ImGui::PopStyleColor(3) )
+static void PushDangerButton() {
+    ImGui::PushStyleColor(ImGuiCol_Button, {0.70f, 0.15f, 0.15f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.90f, 0.25f, 0.25f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.50f, 0.10f, 0.10f, 1.00f});
+} // red button
+
+static void PushSuccessButton() {
+    ImGui::PushStyleColor(ImGuiCol_Button, {0.15f, 0.55f, 0.30f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.18f, 0.75f, 0.40f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.10f, 0.40f, 0.20f, 1.00f});
+} // green button
+
+static void PushAccentButton() {
+    ImGui::PushStyleColor(ImGuiCol_Button, {0.15f, 0.45f, 0.90f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.25f, 0.60f, 1.00f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.10f, 0.35f, 0.70f, 1.00f});
+} // blue button
+
+
+namespace GUI {
+    void Render(App& app) {
         // window styles
         ImGui::StyleColorsDark();
-
+        ImGuiStyle &style = ImGui::GetStyle();
 
         // full screen host window
         ImGuiIO &io = ImGui::GetIO();
-        ImGui::SetWindowPos({0, 0});
-        ImGui::SetWindowSize(io.DisplaySize);
+        ImGui::SetNextWindowPos({0, 0});
+        ImGui::SetNextWindowSize(io.DisplaySize);
         ImGui::SetNextWindowBgAlpha(1.0f);
 
         // window poistion and size fixed        
@@ -32,12 +60,15 @@ namespace GUI
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus 
             | ImGuiWindowFlags_NoScrollbar);
         
-        // Main contents in child region (leaves room for other bars)
+
+        RenderUtilBar(app);
+
+        // Main contents in child region (leaves room for other panels)
         float statusH = 55.0f;
-        ImGui::BeginChild("##mainpage",{0, io.DisplaySize.y - 2 * statusH}, 0);
+        ImGui::BeginChild("##page", {0, io.DisplaySize.y - 2 * statusH}, 0);
 
         AppState& state = app.GetState();
-        switch (state.currentPage)
+        switch (state.currentPage) 
         {
         case AppState::Page::HOME:
             RenderHomePage(app);
@@ -62,6 +93,85 @@ namespace GUI
         }
         
         ImGui::EndChild();
+
+        RenderStatusBar(app);
+
+
         ImGui::End();
     }
+}
+
+
+static void RenderUtilBar (App &app) {
+    AppState &state = app.GetState();
+    /*  
+        ui
+    */ 
+    
+    ImGui::Separator();
+    ImGui::Spacing();
+}
+
+
+
+static void RenderStatusBar(App &app) {
+    AppState &state = app.GetState();
+
+    // visual seperation
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    if (!state.infoMessage.empty()) {
+        ImGui::TextColored(COL_SUCCESS, "  ✓  %s", state.infoMessage.c_str());
+    }
+    else if (!state.errorMessage.empty()) {
+        ImGui::TextColored(COL_DANGER, "  ✗  %s", state.errorMessage.c_str());
+    }
+    else {
+        ImGui::TextColored(COL_ACCENT, "Ready");
+    }
+}
+
+
+
+static void RenderHomePage (App &app) {
+    AppState &state = app.GetState();
+
+
+
+}
+
+
+static void RenderLoginPage (App &app) {
+    AppState &state = app.GetState();
+
+
+}
+
+
+static void RenderRegisterPage (App &app) {
+    AppState &state = app.GetState();
+
+
+}
+
+
+static void RenderDashBoard (App &app) {
+    AppState &state = app.GetState();
+
+
+}
+
+
+static void RenderProductList (App &app) {
+    AppState &state = app.GetState();
+
+
+}
+
+
+static void RenderPlaceOrderPage (App &app) {
+    AppState &state = app.GetState();
+
+
 }
