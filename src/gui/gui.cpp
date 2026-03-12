@@ -104,10 +104,55 @@ namespace GUI {
 
 static void RenderUtilBar (App &app) {
     AppState &state = app.GetState();
-    /*  
-        ui
-    */ 
     
+    ImGui::TextColored(COL_ACCENT, "BabaTalal's Smart Marketplace");
+
+    if (!state.isLoggedIn && state.currentPage != AppState::Page::DASHBOARD) {
+        std::string lhsText = "  Login    Register  ";
+        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("     ").x);
+        PushAccentButton();
+        if (ImGui::Button("  Login  ")) {
+            state.currentPage = AppState::Page::LOGIN;
+        }
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine();
+
+        PushSuccessButton();
+        if (ImGui::Button("  Register  ")) {
+            state.currentPage = AppState::Page::REGISTER;
+        }
+        ImGui::PopStyleColor(3);
+    }
+    else {
+        // std::string roleStr = (state.currentUser->GetRole() == UserRole::DEALER ? "[dealer]" : "[retailer]");
+        std::string roleStr = "Dealer";
+        // std::string usernameStr = state.currentUser->GetUsername();
+        std::string usernameStr = "Talal";
+        std::string lhsText = roleStr + usernameStr + "    DashBoard    Logout  ";
+        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("     ").x);
+
+        ImGui::TextColored(COL_ACCENT, "%s", roleStr.c_str());
+        ImGui::SameLine();
+
+        ImGui::TextColored(COL_SUCCESS, "%s", usernameStr.c_str());
+        ImGui::SameLine();
+
+        PushAccentButton();
+        if (ImGui::Button("  DashBoard  ")) {
+            state.currentPage = AppState::Page::DASHBOARD;
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::SameLine();
+
+        PushDangerButton();
+        if (ImGui::Button("  Logout  ")) {
+            app.Logout();
+        }
+        ImGui::PopStyleColor(3);
+    }
+    
+    // visual seperation
     ImGui::Separator();
     ImGui::Spacing();
 }
@@ -144,21 +189,31 @@ static void RenderHomePage (App &app) {
 
 static void RenderLoginPage (App &app) {
     AppState &state = app.GetState();
+    ImGui::TextColored(COL_ACCENT, "Login Page");
 
+    // for temp testing
+    if (ImGui::Button("test")) {
+        // state.isLoggedIn = true;
+        state.currentPage = AppState::Page::DASHBOARD;
+        
+    }
+    
 
 }
 
 
 static void RenderRegisterPage (App &app) {
     AppState &state = app.GetState();
-
+    ImGui::TextColored(COL_DANGER, "Register Page");
 
 }
 
 
 static void RenderDashBoard (App &app) {
     AppState &state = app.GetState();
-
+    ImGui::TextColored(COL_DANGER, "DashBoard Page");
+    ImGui::SameLine();
+    ImGui::Button("ssss");
 
 }
 
