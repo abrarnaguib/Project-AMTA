@@ -2,6 +2,7 @@
 #include "../core/app.h"
 #include "imgui.h"
 #include<string>
+#include<iostream>
 
 
 
@@ -21,6 +22,10 @@ static void RenderStatusBar(App &app);  // Render the bottom action status bar (
 static const ImVec4 COL_ACCENT { 0.20f, 0.60f, 1.00f, 1.00f }; // blue
 static const ImVec4 COL_SUCCESS { 0.18f, 0.80f, 0.44f, 1.00f }; // green
 static const ImVec4 COL_DANGER { 0.90f, 0.25f, 0.25f, 1.00f }; // red
+static const ImVec4 COL_MUTED   { 0.60f, 0.60f, 0.60f, 1.00f }; // dark grey
+static const ImVec4 COL_WARN    { 1.00f, 0.75f, 0.10f, 1.00f }; // yellow
+static const ImVec4 COL_BG_CARD { 0.14f, 0.14f, 0.18f, 1.00f }; // grey
+
 
 // Helper functions for pushing a styled button colour
 // remember to pop after use ( ImGui::PopStyleColor(3) )
@@ -41,6 +46,12 @@ static void PushAccentButton() {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.25f, 0.60f, 1.00f, 1.00f});
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.10f, 0.35f, 0.70f, 1.00f});
 } // blue button
+
+static void PushWarnButton() {
+    ImGui::PushStyleColor(ImGuiCol_Button, {1.00f, 0.75f, 0.10f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {1.00f, 0.85f, 0.20f, 1.00f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.80f, 0.68f, 0.5f, 1.00f});
+} // yellow button
 
 
 namespace GUI {
@@ -189,13 +200,47 @@ static void RenderHomePage (App &app) {
 
 static void RenderLoginPage (App &app) {
     AppState &state = app.GetState();
-    ImGui::TextColored(COL_ACCENT, "Login Page");
+    
+    
+    ImGui::Spacing();
+    ImGui::TextColored(COL_ACCENT, "Login to your account");
+    ImGui::Spacing();
+    ImGui::Separator();
 
-    // for temp testing
-    if (ImGui::Button("test")) {
-        // state.isLoggedIn = true;
-        state.currentPage = AppState::Page::DASHBOARD;
-        
+    static char username[64] = "";
+    static char password[64] = "";
+
+    ImGui::Text("Username");
+    ImGui::InputText("##login_username", username, sizeof(username));
+    ImGui::Spacing();
+
+    ImGui::Text("Password");
+    ImGui::InputText("##login_password", password, sizeof(password));
+
+    PushAccentButton();
+    bool loginPressed = ImGui::Button("  Login  ");
+    ImGui::PopStyleColor(3);
+    
+
+    if (loginPressed || (ImGui::IsKeyPressed(ImGuiKey_Enter) && username[0] != '\0')) {
+        bool exists = app.Login(username, password);
+        if (exists) {
+            username[0] = '\0';
+            password[0] = '\0';
+        } 
+    }
+    ImGui::Spacing();
+
+    if (ImGui::Button("  Back To Home  ")) {
+        state.currentPage = AppState::Page::HOME;
+    }
+    ImGui::Spacing();
+
+    ImGui::TextColored(COL_MUTED, "Don't Have an Account?");
+    ImGui::SameLine();
+    ImGui::TextColored(COL_ACCENT, "Register");
+    if (ImGui::IsItemClicked()) {
+        state.currentPage = AppState::Page::REGISTER;
     }
     
 
@@ -204,7 +249,82 @@ static void RenderLoginPage (App &app) {
 
 static void RenderRegisterPage (App &app) {
     AppState &state = app.GetState();
-    ImGui::TextColored(COL_DANGER, "Register Page");
+
+    ImGui::Spacing();
+    ImGui::TextColored(COL_ACCENT, "Create a new account");
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    static char username[64] = "";
+    static char password[64] = "";
+    static char confirm[64] = "";
+    static char location[128] = "";
+    static char extraName[128] = "";
+    const char *roles[] = {"Retailer", "Dealer"};
+    static int roleIdx = 0;
+
+    ImGui::Text("Username");
+    ImGui::InputText("##reg_username", username, sizeof(username));
+    ImGui::Spacing();
+
+    ImGui::Text("Password");
+    ImGui::InputText("##reg_password", password, sizeof(password));
+    ImGui::Spacing();
+
+    ImGui::Text("Confirm Password");
+    ImGui::InputText("##reg_confirm", confirm, sizeof(confirm));
+    if (confirm[0] != '\0') {
+        if (std::string(password) == std::string(confirm)) {
+            ImGui::TextColored(COL_SUCCESS, "  ✓ Passwords match");
+        }
+        else {
+            ImGui::TextColored(COL_DANGER, "  ✗ Passwords do not match");
+        }
+    }
+    ImGui::Spacing();
+
+    ImGui::Text("Account Type");
+    ImGui::Combo("##reg_role", &roleIdx, roles, 2); // dropdown menu for choosing roles
+    ImGui::Spacing();
+
+    ImGui::Text(roleIdx == 0 ? "Shop Name" : "Company Name");
+    ImGui::InputText("##reg_extraName", extraName, sizeof(extraName));
+    ImGui::Spacing();
+
+    ImGui::Text("Location / City");
+    ImGui::InputText("##reg_location", location, sizeof(location));
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+    bool canRegister = ((std::string(password) == std::string(confirm)) && password[0] != '\0');
+    if (!canRegister) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f);
+        ImGui::Button("  Register  ");
+        ImGui::PopStyleVar();
+    }
+    else {
+        PushSuccessButton();
+        if (ImGui::Button("  Register  ")) {
+            const char *roleStrs[] = {"RETAILER", "DEALER"};
+            bool registered = app.Register(username, password, roleStrs[roleIdx], extraName, location);
+            if (registered) {
+                username[0] = '\0';
+                password[0] = '\0';
+                confirm[0] = '\0';
+                extraName[0] = '\0';
+                location[0] = '\0';
+            }
+        }
+        ImGui::PopStyleColor(3);
+    }
+    ImGui::Spacing();
+
+    ImGui::TextColored(COL_MUTED, "Already Have an Account?");
+    ImGui::SameLine();
+    ImGui::TextColored(COL_ACCENT, "Login");
+    if (ImGui::IsItemClicked()) {
+        state.currentPage = AppState::Page::LOGIN;
+    }
 
 }
 
