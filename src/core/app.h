@@ -59,6 +59,7 @@ public:
     bool PlaceOrder(int productId, int quantity);
     bool AcceptOrder(int orderId);
     bool RejectOrder(int orderId);
+    bool CompleteOrder(int orderId);
 
     // Accessors
     AppState &GetState() { return m_state; }
