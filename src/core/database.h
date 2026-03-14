@@ -34,7 +34,9 @@ public:
     User* FindUserById(int userId) const;
     User* FindUserByName(const std::string &username) const;
     Dealer* GetDealer(int userId) const;
+    Dealer* GetDealer(User *user) const;
     Retailer* GetRetailer(int userId) const;
+    Retailer* GetRetailer(User *user) const;
 
     // product related operations
     Product* AddProduct(int dealerId, const std::string &name, const std::string &category, double price, int stock);

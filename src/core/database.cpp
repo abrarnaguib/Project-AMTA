@@ -259,13 +259,22 @@ User* Database::FindUserByName(const std::string &username) const {
     return nullptr;
 }
 
-// confirms dealer using userId
+// confirms dealer using userId or user
 Dealer* Database::GetDealer(int userId) const {
     return dynamic_cast<Dealer*> (FindUserById(userId));
 }
+
+Dealer* Database::GetDealer(User* user) const {
+    return dynamic_cast<Dealer*> (user);
+}
+
 // same procedure
 Retailer* Database::GetRetailer(int userId) const {
     return dynamic_cast<Retailer*>(FindUserById(userId));
+}
+
+Retailer* Database::GetRetailer(User* user) const {
+    return dynamic_cast<Retailer*>(user);
 }
 
 // verifies dealer and adds product to global product list as well as dealer's list

@@ -15,6 +15,8 @@ static void RenderProductList (App &app);
 static void RenderPlaceOrderPage (App &app);
 static void RenderUtilBar (App &app); // Render the top utility bar (account info, login logout buttons etc.)
 static void RenderStatusBar(App &app);  // Render the bottom action status bar (wrong input, wrong password etc.)
+static void RenderDealerPanel(App &app); // Render dealer dashboard
+static void RenderRetailerPanel(App &app); // Render retailer dashboard
 
 
 // colour palette 
@@ -53,6 +55,12 @@ static void PushWarnButton() {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.80f, 0.68f, 0.5f, 1.00f});
 } // yellow button
 
+static void SectionLabel(const ImVec4 &col, const char* label) {
+    ImGui::Spacing();
+    ImGui::TextColored(col, "%s", label);
+    ImGui::Separator();
+    ImGui::Spacing();
+}
 
 namespace GUI {
     void Render(App& app) {
@@ -136,10 +144,8 @@ static void RenderUtilBar (App &app) {
         ImGui::PopStyleColor(3);
     }
     else {
-        // std::string roleStr = (state.currentUser->GetRole() == UserRole::DEALER ? "[dealer]" : "[retailer]");
-        std::string roleStr = "Dealer";
-        // std::string usernameStr = state.currentUser->GetUsername();
-        std::string usernameStr = "Talal";
+        std::string roleStr = (state.currentUser->GetRole() == UserRole::DEALER ? "[dealer]" : "[retailer]");
+        std::string usernameStr = state.currentUser->GetUsername();
         std::string lhsText = roleStr + usernameStr + "    DashBoard    Logout  ";
         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("     ").x);
 
@@ -202,10 +208,7 @@ static void RenderLoginPage (App &app) {
     AppState &state = app.GetState();
     
     
-    ImGui::Spacing();
-    ImGui::TextColored(COL_ACCENT, "Login to your account");
-    ImGui::Spacing();
-    ImGui::Separator();
+    SectionLabel(COL_ACCENT, "Login to your account");
 
     static char username[64] = "";
     static char password[64] = "";
@@ -250,10 +253,7 @@ static void RenderLoginPage (App &app) {
 static void RenderRegisterPage (App &app) {
     AppState &state = app.GetState();
 
-    ImGui::Spacing();
-    ImGui::TextColored(COL_ACCENT, "Create a new account");
-    ImGui::Spacing();
-    ImGui::Separator();
+    SectionLabel(COL_ACCENT, "Create a new account");
 
     static char username[64] = "";
     static char password[64] = "";
@@ -331,10 +331,285 @@ static void RenderRegisterPage (App &app) {
 
 static void RenderDashBoard (App &app) {
     AppState &state = app.GetState();
-    ImGui::TextColored(COL_DANGER, "DashBoard Page");
-    ImGui::SameLine();
-    ImGui::Button("ssss");
+    if (!state.isLoggedIn) {
+        ImGui::TextColored(COL_DANGER, "You must be logged in to view this page");
+        return;
+    }
+    if (state.currentUser->GetRole() == UserRole::DEALER) {
+        RenderDealerPanel(app);
+    }
+    else if (state.currentUser->GetRole() == UserRole::RETAILER) {
+        RenderRetailerPanel(app);
+    }
+}
 
+
+static void RenderDealerPanel(App &app) {
+    AppState &state = app.GetState();
+    Dealer *d = app.GetDatabase().GetDealer(app.GetState().currentUser);
+    if (!d) return;
+
+    // summary card
+    SectionLabel(COL_ACCENT, "Dealer Dashboard");
+
+    ImGui::TextColored(COL_MUTED, "Company  : ");
+    ImGui::SameLine();
+    ImGui::Text("%s", d->GetCompanyName().c_str());
+
+    ImGui::TextColored(COL_MUTED, "Location : ");
+    ImGui::SameLine();
+    ImGui::Text("%s", d->GetLocation().c_str());
+    
+    ImGui::TextColored(COL_MUTED, "Rating : ");
+    ImGui::SameLine();
+    float r = d->GetRating();
+    ImVec4 rCol;
+    if (r >= 4.0) rCol = COL_SUCCESS;
+    else if (r >= 2.5) rCol = COL_WARN;
+    else rCol = COL_DANGER;
+    ImGui::TextColored(rCol, "%.1f / 5.0", r);
+    ImGui::Spacing();
+
+    // add product form
+    ImGui::PushStyleColor(ImGuiCol_Text, COL_SUCCESS);
+    if (ImGui::CollapsingHeader("  + Add New Product", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        static char pName[128] = "";
+        static char pCat[64] = "";
+        static float pPrice = 0.0f;
+        static int pStock = 0;
+
+        float iw = 280.0f;
+        ImGui::PushItemWidth(iw);
+
+        ImGui::Text("Produt Name");
+        ImGui::InputText("##pName", pName, sizeof(pName));
+        ImGui::SameLine(iw + 30);
+   
+        ImGui::Text("Category");
+        ImGui::SetCursorPosX(iw + 30);
+        ImGui::InputText("##pCat", pCat, sizeof(pCat));
+             
+        ImGui::Text("Price");
+        ImGui::InputFloat("##pPrice", &pPrice, 1.0f, 10.0f, "%.2f"); 
+        if (pPrice < 0) pPrice = 0;
+        ImGui::SameLine(iw + 30);
+
+        ImGui::Text("Stock");
+        ImGui::SetCursorPosX(iw + 30);
+        ImGui::InputInt("##pStock", &pStock);
+        if (pStock < 0) pStock = 0;
+
+        ImGui::PopItemWidth();
+        ImGui::Spacing();
+
+        PushSuccessButton();
+        if (ImGui::Button("  Add Product  ")) {
+            if (pName[0] != '\0' && pCat[0] != '\0') {
+                if (app.AddProduct(pName, pCat, pPrice, pStock)) {
+                    pName[0] = '\0';
+                    pCat[0] = '\0';
+                }
+            }
+            else {
+                app.GetState().errorMessage = "Name and category are required";
+            }
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::Spacing();
+    }
+
+    // product catalogue
+    SectionLabel(COL_ACCENT, "Your Products");
+
+    static int editingProductId = -1;
+    static float editPrice = 0;
+    static int editStock = 0;
+
+    if (d->GetProducts().empty()) {
+        ImGui::TextColored(COL_MUTED, "   No Products Lister Yet.");
+    }
+
+    const int pw = 80;
+    for (const auto& p : d->GetProducts()) {
+        ImGui::PushID(p.GetProductId());
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::BeginChild("##ordercard", {0, pw}, ImGuiChildFlags_Borders);
+
+        ImGui::TextColored(COL_ACCENT, "[%d] %s", p.GetProductId(), p.GetName().c_str());
+        ImGui::SameLine(400);
+        ImGui::TextColored(COL_MUTED, "Avg Rating: %.1f", p.GetAvgRating());
+        ImGui::Text("   Category: %s   |   Price: %.2f   |   Stock: %d", p.GetCategory().c_str(), p.GetPrice() , p.GetStock());
+        ImGui::Spacing();
+
+        // for edit / delete button seletion
+        if (editingProductId != p.GetProductId()) {
+            PushAccentButton();
+            if (ImGui::SmallButton("  Edit  ")) {
+                editingProductId = p.GetProductId();
+                editPrice = (float)p.GetPrice();
+                editStock = p.GetStock();
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::SameLine();
+
+            PushDangerButton();
+            if (ImGui::SmallButton("  Delete  " )) {
+                app.DeleteProduct(p.GetProductId());
+            }
+            ImGui::PopStyleColor(3);
+        }
+        else { // for inline edit
+            ImGui::PushItemWidth(120);
+            ImGui::InputFloat("Price##e", &editPrice, 1.0f, 10.0f, "%.2f");
+            ImGui::SameLine();
+            ImGui::InputInt("Stock##e", &editStock);
+            ImGui::PopItemWidth();
+            if (editPrice < 0) editPrice = 0;
+            if (editStock < 0) editStock = 0;
+            ImGui::SameLine();
+
+            PushSuccessButton();
+            if (ImGui::SmallButton("  Save  ")) {
+                app.UpdateProduct(editingProductId, (double)editPrice, editStock);
+                editingProductId = -1;
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::SameLine();
+
+            PushDangerButton();
+            if (ImGui::SmallButton("  Cancel  ")) {
+                editingProductId = -1;
+            }
+            ImGui::PopStyleColor(3);
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
+
+    // incoming orders
+    SectionLabel(COL_ACCENT, "Incoming Orders");
+
+    if (d->GetOrders().empty()) {
+        ImGui::TextColored(COL_MUTED, "   No incoming orders remaining.");
+        return;
+    }
+
+    const int ow = 70;
+    for (const auto& o : d->GetOrders()) {
+        ImGui::PushID(o.GetOrderId());
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::BeginChild("##ordercard", {0, ow}, ImGuiChildFlags_Borders);
+
+        ImVec4 oStatus;
+        switch (o.GetStatus())
+        {
+        case OrderStatus::ACCEPTED:
+            oStatus = COL_SUCCESS;
+            break;
+        case OrderStatus::PENDING:
+            oStatus = COL_WARN;
+            break;
+        case OrderStatus::REJECTED:
+            oStatus = COL_DANGER;
+            break;
+        default:
+            break;
+        }
+        ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
+        ImGui::SameLine(500);
+        ImGui::TextColored(oStatus, "[%s]", o.GetStatusStr().c_str());
+        ImGui::Spacing();
+
+        if (o.GetStatus() == OrderStatus::PENDING) {
+            PushSuccessButton();
+            if (ImGui::SmallButton("  Accept  ")) {
+                app.AcceptOrder(o.GetOrderId());
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::SameLine();
+
+            PushDangerButton();
+            if (ImGui::SmallButton("  Reject  ")) {
+                app.RejectOrder(o.GetOrderId());
+            }
+            ImGui::PopStyleColor(3);
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
+}
+
+
+static void RenderRetailerPanel(App &app) {
+    AppState &state = app.GetState();
+    Retailer *r = app.GetDatabase().GetRetailer(app.GetState().currentUser);
+    if (!r) return;
+    
+    // summary card
+    SectionLabel(COL_ACCENT, "Retailer Dashboard");
+
+    ImGui::TextColored(COL_MUTED, "Shop     : ");
+    ImGui::SameLine();
+    ImGui::Text("%s", r->GetShopName().c_str());
+
+    ImGui::TextColored(COL_MUTED, "Location : ");
+    ImGui::SameLine();
+    ImGui::Text("%s", r->GetLocation().c_str());
+    ImGui::Spacing();
+
+    PushAccentButton();
+    if (ImGui::Button("  Browse & Order Products ")) {
+        state.currentPage = AppState::Page::PRODUCT_LIST;
+    }
+    ImGui::PopStyleColor(3);
+
+
+    // order history of a retailer
+    SectionLabel(COL_ACCENT, "Order History");
+
+    if (r->GetOrderHistory().empty()) {
+        ImGui::TextColored(COL_MUTED, "   No orders placed yet. Browse products to start ordering!");
+        return;
+    }
+
+    const int w = 60;
+    for (const auto& o : r->GetOrderHistory()) {
+        ImGui::PushID(o.GetOrderId());
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::BeginChild("##orderhist", {0, w}, ImGuiChildFlags_Borders);
+
+        ImVec4 oStatus;
+        switch (o.GetStatus())
+        {
+        case OrderStatus::ACCEPTED:
+            oStatus = COL_SUCCESS;
+            break;
+        case OrderStatus::PENDING:
+            oStatus = COL_WARN;
+            break;
+        case OrderStatus::REJECTED:
+            oStatus = COL_DANGER;
+            break;
+        default:
+            break;
+        }
+        ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
+        ImGui::SameLine(500);
+        ImGui::TextColored(oStatus, "[%s]", o.GetStatusStr().c_str());
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
 }
 
 
