@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include<string>
 #include<iostream>
+#include<math.h>
 
 
 
@@ -14,9 +15,9 @@ static void RenderDashBoard (App &app);
 static void RenderProductList (App &app);
 static void RenderPlaceOrderPage (App &app);
 static void RenderUtilBar (App &app); // Render the top utility bar (account info, login logout buttons etc.)
-static void RenderStatusBar(App &app);  // Render the bottom action status bar (wrong input, wrong password etc.)
-static void RenderDealerPanel(App &app); // Render dealer dashboard
-static void RenderRetailerPanel(App &app); // Render retailer dashboard
+static void RenderStatusBar (App &app);  // Render the bottom action status bar (wrong input, wrong password etc.)
+static void RenderDealerPanel (App &app); // Render dealer dashboard
+static void RenderRetailerPanel (App &app); // Render retailer dashboard
 
 
 // colour palette 
@@ -24,8 +25,8 @@ static void RenderRetailerPanel(App &app); // Render retailer dashboard
 static const ImVec4 COL_ACCENT { 0.20f, 0.60f, 1.00f, 1.00f }; // blue
 static const ImVec4 COL_SUCCESS { 0.18f, 0.80f, 0.44f, 1.00f }; // green
 static const ImVec4 COL_DANGER { 0.90f, 0.25f, 0.25f, 1.00f }; // red
-static const ImVec4 COL_MUTED   { 0.60f, 0.60f, 0.60f, 1.00f }; // dark grey
-static const ImVec4 COL_WARN    { 1.00f, 0.75f, 0.10f, 1.00f }; // yellow
+static const ImVec4 COL_MUTED { 0.60f, 0.60f, 0.60f, 1.00f }; // dark grey
+static const ImVec4 COL_WARN { 1.00f, 0.75f, 0.10f, 1.00f }; // yellow
 static const ImVec4 COL_BG_CARD { 0.14f, 0.14f, 0.18f, 1.00f }; // grey
 
 
@@ -146,7 +147,8 @@ static void RenderUtilBar (App &app) {
     else {
         std::string roleStr = (state.currentUser->GetRole() == UserRole::DEALER ? "[dealer]" : "[retailer]");
         std::string usernameStr = state.currentUser->GetUsername();
-        std::string lhsText = roleStr + usernameStr + "    DashBoard    Logout  ";
+        std::string buttonName = (state.currentPage == AppState::Page::DASHBOARD ? "Home" : "DashBoard");
+        std::string lhsText = roleStr + usernameStr + "    " + buttonName + "    Logout  ";
         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("     ").x);
 
         ImGui::TextColored(COL_ACCENT, "%s", roleStr.c_str());
@@ -156,8 +158,15 @@ static void RenderUtilBar (App &app) {
         ImGui::SameLine();
 
         PushAccentButton();
-        if (ImGui::Button("  DashBoard  ")) {
-            state.currentPage = AppState::Page::DASHBOARD;
+        if (state.currentPage == AppState::Page::DASHBOARD) {
+            if (ImGui::Button("  Home  ")) {
+                state.currentPage = AppState::Page::HOME;
+            }
+        }
+        else {
+            if (ImGui::Button("  DashBoard  ")) {
+                state.currentPage = AppState::Page::DASHBOARD;
+            }
         }
         ImGui::PopStyleColor(3);
         ImGui::SameLine();
@@ -613,10 +622,115 @@ static void RenderRetailerPanel(App &app) {
 }
 
 
+// product list 
 static void RenderProductList (App &app) {
     AppState &state = app.GetState();
+    bool isRetailer = state.isLoggedIn && state.currentUser->GetRole() == UserRole::RETAILER;
 
+    // summary card
+    SectionLabel(COL_ACCENT, "Browse Products");
 
+    // search bar 
+    static char searchBuffer[128] = "";
+    static double maxPrice = 0.0f;
+    static double minPrice = 0.0f;
+
+    ImGui::PushItemWidth(300);
+    ImGui::InputText("Search#srch", searchBuffer, sizeof(searchBuffer));
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushItemWidth(130);
+    ImGui::InputDouble("Min Price##mn", &minPrice, 0, 0, "%.0f BDT");
+    ImGui::SameLine();
+    ImGui::InputDouble("Max Price##mx", &maxPrice, 0, 0, "%.0f BDT");
+    ImGui::PopItemWidth();
+
+    minPrice = fmax(0.0f, minPrice);
+    maxPrice = fmax(minPrice, maxPrice);
+    ImGui::Spacing();
+
+    // Quantity selector (retailer only)
+    static int orderQty = 1;
+    if (isRetailer) {
+        ImGui::PushItemWidth(120);
+        ImGui::InputInt("Order Qty##oqty", &orderQty);
+        if (orderQty < 1) orderQty = 1;
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        ImGui::TextColored(COL_MUTED, "(applies to all Order buttons below)");
+    }
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    std::string filter(searchBuffer);
+
+    int shown = 0;
+    const int pw = 75;
+    for (const auto &p : app.GetDatabase().GetAllProducts()) {
+        // apply filters
+        if (!filter.empty()) {
+            std::string nameLower = p.GetName();
+            std::string catLower = p.GetCategory();
+            std::string fLower = filter;
+            for (char &c : nameLower) c = (char)tolower(c);
+            for (char &c : catLower) c = (char)tolower(c);
+            for (char &c : fLower) c = (char)tolower(c);
+            if (nameLower.find(fLower) != std::string::npos && catLower.find(fLower) != std::string::npos) continue;
+        }
+        if (p.GetPrice() < minPrice || p.GetPrice() > maxPrice) continue;
+        shown++;
+        ImGui::PushID(p.GetProductId());
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::BeginChild("##plist", {0, pw}, ImGuiChildFlags_Borders);
+
+        ImGui::TextColored(COL_ACCENT, "[%d] %s", p.GetProductId(), p.GetName().c_str());
+        ImGui::SameLine(500);
+
+        //star rating display
+        float avg = p.GetAvgRating();
+        ImVec4 rCol;
+        if (avg >= 4.0f) rCol = COL_SUCCESS;
+        else if (avg >= 2.5f) rCol = COL_WARN;
+        else rCol = COL_DANGER;
+
+        if (avg) ImGui::TextColored(rCol, "★ %.1f", avg);
+        else ImGui::TextColored(COL_MUTED, "No reviews yet");
+
+        ImGui::Text("   Category: %-20s   Price: %.2f BDT   Stock: %d", p.GetCategory().c_str(), p.GetPrice(), p.GetStock());
+
+        if (!isRetailer) {
+            ImGui::Spacing();
+            if (p.GetStock() > 0) {
+                PushAccentButton();
+                std::string label = "  Order  ##" + std::to_string(p.GetProductId());
+                if (ImGui::SmallButton(label.c_str())) {
+                    app.PlaceOrder(p.GetProductId(), orderQty);
+                }
+                ImGui::PopStyleColor(3);
+            }
+            else {
+                ImGui::TextColored(COL_DANGER, "  Out of Stock");
+            }
+        }
+        else {
+            ImGui::Spacing();
+            ImGui::TextColored(COL_MUTED, "  Login as a retailer to place orders");
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
+
+    if (!shown) ImGui::TextColored(COL_MUTED, "  No products match your search.");
+    ImGui::Spacing();
+
+    if (ImGui::Button("  Back to Home  ")) {
+        state.currentPage = AppState::Page::HOME;
+    }
 }
 
 
