@@ -208,8 +208,45 @@ static void RenderStatusBar(App &app) {
 static void RenderHomePage (App &app) {
     AppState &state = app.GetState();
 
+    ImGui::Spacing();
+    ImGui::Spacing();
 
+    // app description
+    ImGui::TextColored(COL_ACCENT, "  Welcome to Babatalal");
+    ImGui::Spacing();
+    ImGui::TextColored(COL_MUTED, "  Bangladesh's lightweight B2B marketplace connecting\n  small retailers with importers and dealers");
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
 
+    // stats
+    int productCount = (int)app.GetDatabase().GetAllProducts().size();
+    int orderCount = (int)app.GetDatabase().GetAllOrders().size();
+    ImGui::Text("  Products Listed: ");
+    ImGui::SameLine();
+    ImGui::TextColored(COL_WARN, "%d", productCount);
+    ImGui::SameLine(250);
+    ImGui::Text("  Orders Placed: ");
+    ImGui::SameLine();
+    ImGui::TextColored(COL_WARN, "%d", orderCount);
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+    PushAccentButton();
+    if (ImGui::Button("  Browse Products  ")) {
+        state.currentPage = AppState::Page::PRODUCT_LIST;
+    }
+    ImGui::PopStyleColor(3);
+
+    if (!state.isLoggedIn) {
+        ImGui::SameLine();
+        PushSuccessButton();
+        if (ImGui::Button("  Register Now  ")) {
+            state.currentPage = AppState::Page::REGISTER;
+        }
+        ImGui::PopStyleColor(3);
+    }
 }
 
 
@@ -325,6 +362,11 @@ static void RenderRegisterPage (App &app) {
             }
         }
         ImGui::PopStyleColor(3);
+    }
+    ImGui::Spacing();
+
+    if (ImGui::Button("  Back To Home  ")) {
+        state.currentPage = AppState::Page::HOME;
     }
     ImGui::Spacing();
 
@@ -636,7 +678,7 @@ static void RenderProductList (App &app) {
     static double minPrice = 0.0f;
 
     ImGui::PushItemWidth(300);
-    ImGui::InputText("Search#srch", searchBuffer, sizeof(searchBuffer));
+    ImGui::InputText("Search##srch", searchBuffer, sizeof(searchBuffer));
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
