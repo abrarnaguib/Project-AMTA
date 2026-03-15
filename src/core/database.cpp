@@ -353,10 +353,13 @@ void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
     SaveAll();
 }
 // marks the order as completed
-void Database::CompleteOrder(int orderId) {
+void Database::CompleteOrder(int orderId, int retailerId) {
     Order* o = FindOrder(orderId);
     if (!o) {
         throw OrderException("Order ID " + std::to_string(orderId) + " not found.\n");
+    }
+    if (o->GetRetailerId() != retailerId){
+        throw AuthException("You are not authorized to complete this order.");
     }
     o->Complete();
     SaveAll();

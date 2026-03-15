@@ -49,7 +49,7 @@ public:
     // order related operations
     Order* PlaceOrder(int retailerId, int dealerId, int productId, int quantity);
     void RespondToOrder(int orderId, int dealerId, bool accept);
-    void CompleteOrder(int orderId);
+    void CompleteOrder(int orderId, int retailerId);
     Order* FindOrder(int orderId) const;
     const std::vector<Order> &GetAllOrders() const  {
         return m_orders;
