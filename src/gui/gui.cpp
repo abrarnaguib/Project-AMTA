@@ -789,7 +789,7 @@ static void RenderProductList (App &app) {
 
         ImGui::Text("   Category: %-20s   Price: %.2f BDT   Stock: %d", p.GetCategory().c_str(), p.GetPrice(), p.GetStock());
 
-        if (!isRetailer) {
+        if (isRetailer) {
             ImGui::Spacing();
             if (p.GetStock() > 0) {
                 PushAccentButton();
@@ -803,7 +803,7 @@ static void RenderProductList (App &app) {
                 ImGui::TextColored(COL_DANGER, "  Out of Stock");
             }
         }
-        else {
+        else if (!state.isLoggedIn) {
             ImGui::Spacing();
             ImGui::TextColored(COL_MUTED, "  Login as a retailer to place orders");
         }
