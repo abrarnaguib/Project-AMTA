@@ -56,10 +56,33 @@ static void PushWarnButton() {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, {0.80f, 0.68f, 0.5f, 1.00f});
 } // yellow button
 
+
+// custom drawings
+// seperator line with a fixed width
+static void customSeperator(float width) {
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImVec2 p1 = ImVec2(p.x, p.y);
+    ImVec2 p2 = ImVec2(p.x + width, p.y);
+    ImU32 separator_color = ImGui::GetColorU32(ImGuiCol_Separator);
+    float thickness = 1.0f; 
+    draw_list->AddLine(p1, p2, separator_color, thickness);
+    ImGui::Dummy(ImVec2(width, ImGui::GetStyle().ItemSpacing.y)); 
+}
+
+
+// for summary card on top of a panel
 static void SectionLabel(const ImVec4 &col, const char* label) {
     ImGui::Spacing();
     ImGui::TextColored(col, "%s", label);
     ImGui::Separator();
+    ImGui::Spacing();
+}
+
+static void SectionLabelWidth(const ImVec4 &col, float width, const char* label) {
+    ImGui::Spacing();
+    ImGui::TextColored(col, "%s", label);
+    customSeperator(width);
     ImGui::Spacing();
 }
 
@@ -68,6 +91,11 @@ namespace GUI {
         // window styles
         ImGui::StyleColorsDark();
         ImGuiStyle &style = ImGui::GetStyle();
+        style.WindowRounding = 0.0f;
+        style.FrameRounding = 4.0f;
+        style.GrabRounding = 4.0f;
+        style.ItemSpacing = {10.0f, 8.0f};
+        style.FramePadding = {8.0f, 5.0f};
 
         // full screen host window
         ImGuiIO &io = ImGui::GetIO();
@@ -129,13 +157,12 @@ static void RenderUtilBar (App &app) {
 
     if (!state.isLoggedIn && state.currentPage != AppState::Page::DASHBOARD) {
         std::string lhsText = "  Login    Register  ";
-        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("     ").x);
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("     ").x);
         PushAccentButton();
         if (ImGui::Button("  Login  ")) {
             state.currentPage = AppState::Page::LOGIN;
         }
         ImGui::PopStyleColor(3);
-
         ImGui::SameLine();
 
         PushSuccessButton();
@@ -149,7 +176,7 @@ static void RenderUtilBar (App &app) {
         std::string usernameStr = state.currentUser->GetUsername();
         std::string buttonName = (state.currentPage == AppState::Page::DASHBOARD ? "Home" : "DashBoard");
         std::string lhsText = roleStr + usernameStr + "    " + buttonName + "    Logout  ";
-        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("     ").x);
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("      ").x);
 
         ImGui::TextColored(COL_ACCENT, "%s", roleStr.c_str());
         ImGui::SameLine();
@@ -212,7 +239,9 @@ static void RenderHomePage (App &app) {
     ImGui::Spacing();
 
     // app description
+    ImGui::SetWindowFontScale(1.8f);
     ImGui::TextColored(COL_ACCENT, "  Welcome to Babatalal");
+    ImGui::SetWindowFontScale(1.0f);
     ImGui::Spacing();
     ImGui::TextColored(COL_MUTED, "  Bangladesh's lightweight B2B marketplace connecting\n  small retailers with importers and dealers");
     ImGui::Spacing();
@@ -227,14 +256,14 @@ static void RenderHomePage (App &app) {
     ImGui::SameLine();
     ImGui::TextColored(COL_WARN, "%d", productCount);
     ImGui::SameLine(250);
-    ImGui::Text("  Orders Placed: ");
+    ImGui::Text("Total orders placed: ");
     ImGui::SameLine();
     ImGui::TextColored(COL_WARN, "%d", orderCount);
     ImGui::Spacing();
     ImGui::Spacing();
 
     PushAccentButton();
-    if (ImGui::Button("  Browse Products  ")) {
+    if (ImGui::Button("  Browse Products  ", {200, 40})) {
         state.currentPage = AppState::Page::PRODUCT_LIST;
     }
     ImGui::PopStyleColor(3);
@@ -242,7 +271,7 @@ static void RenderHomePage (App &app) {
     if (!state.isLoggedIn) {
         ImGui::SameLine();
         PushSuccessButton();
-        if (ImGui::Button("  Register Now  ")) {
+        if (ImGui::Button("  Register Now  ", {200, 40})) {
             state.currentPage = AppState::Page::REGISTER;
         }
         ImGui::PopStyleColor(3);
@@ -253,8 +282,15 @@ static void RenderHomePage (App &app) {
 static void RenderLoginPage (App &app) {
     AppState &state = app.GetState();
     
+    float cardWidth = ImGui::GetContentRegionAvail().x * .5f;
+    float winWidth = ImGui::GetContentRegionAvail().x;
+    // center the login card
+    ImGui::SetCursorPosX((winWidth - cardWidth) * 0.5f);
+
+    ImGui::BeginGroup();
+    ImGui::PushItemWidth(cardWidth);
     
-    SectionLabel(COL_ACCENT, "Login to your account");
+    SectionLabelWidth(COL_ACCENT, cardWidth, "Login to your account");
 
     static char username[64] = "";
     static char password[64] = "";
@@ -292,14 +328,23 @@ static void RenderLoginPage (App &app) {
         state.currentPage = AppState::Page::REGISTER;
     }
     
-
+    ImGui::PopItemWidth();
+    ImGui::EndGroup();
 }
 
 
 static void RenderRegisterPage (App &app) {
     AppState &state = app.GetState();
 
-    SectionLabel(COL_ACCENT, "Create a new account");
+    float cardWidth = ImGui::GetContentRegionAvail().x * .65f;
+    float winWidth = ImGui::GetContentRegionAvail().x;
+    // center the login card
+    ImGui::SetCursorPosX((winWidth - cardWidth) * 0.5f);
+
+    ImGui::BeginGroup();
+    ImGui::PushItemWidth(cardWidth);
+
+    SectionLabelWidth(COL_ACCENT, cardWidth, "Create a new account");
 
     static char username[64] = "";
     static char password[64] = "";
@@ -377,6 +422,8 @@ static void RenderRegisterPage (App &app) {
         state.currentPage = AppState::Page::LOGIN;
     }
 
+    ImGui::PopItemWidth();
+    ImGui::EndGroup();
 }
 
 
@@ -456,7 +503,7 @@ static void RenderDealerPanel(App &app) {
         ImGui::Spacing();
 
         PushSuccessButton();
-        if (ImGui::Button("  Add Product  ")) {
+        if (ImGui::Button("  Add Product  ", {200, 32})) {
             if (pName[0] != '\0' && pCat[0] != '\0') {
                 if (app.AddProduct(pName, pCat, pPrice, pStock)) {
                     pName[0] = '\0';
@@ -674,7 +721,7 @@ static void RenderProductList (App &app) {
 
     // search bar 
     static char searchBuffer[128] = "";
-    static double maxPrice = 0.0f;
+    static double maxPrice = 99999.0f;
     static double minPrice = 0.0f;
 
     ImGui::PushItemWidth(300);
