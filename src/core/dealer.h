@@ -48,7 +48,7 @@ public:
 
     // Order Management
     void AddIncomingOrder(const Order &order);
-    void RespondToOrder(int orderId, bool accept);
+    void RespondToOrder(int orderId, OrderStatus status);
 
     // Review management
     void AddReview(int reviewerId, int rating, const std::string &comment);

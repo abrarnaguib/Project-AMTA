@@ -618,6 +618,9 @@ static void RenderDealerPanel(App &app) {
         case OrderStatus::REJECTED:
             oStatus = COL_DANGER;
             break;
+        case OrderStatus::COMPLETED:
+            oStatus = COL_ACCENT;
+            break;
         default:
             break;
         }
@@ -639,6 +642,15 @@ static void RenderDealerPanel(App &app) {
                 app.RejectOrder(o.GetOrderId());
             }
             ImGui::PopStyleColor(3);
+        }
+        else if (o.GetStatus() == OrderStatus::COMPLETED) {
+            ImGui::TextColored(COL_SUCCESS, "Order Received by Recipient");
+        }
+        else if (o.GetStatus() == OrderStatus::ACCEPTED) {
+            ImGui::TextColored(COL_WARN, "Waiting for Recipient's Response");
+        }
+        else {
+            ImGui::TextColored(COL_DANGER, "Order Rejected");
         }
 
         ImGui::EndChild();
@@ -699,12 +711,37 @@ static void RenderRetailerPanel(App &app) {
         case OrderStatus::REJECTED:
             oStatus = COL_DANGER;
             break;
+        case OrderStatus::COMPLETED:
+            oStatus = COL_ACCENT;
+            break;
         default:
             break;
         }
         ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
         ImGui::SameLine(500);
         ImGui::TextColored(oStatus, "[%s]", o.GetStatusStr().c_str());
+        ImGui::Spacing();
+
+        if (o.GetStatus() == OrderStatus::ACCEPTED) {
+            ImGui::TextColored(oStatus, "Order Accepted. Please press the  ");
+            ImGui::SameLine();
+            PushAccentButton();
+            if (ImGui::SmallButton("  Complete  ")) {
+                app.CompleteOrder(o.GetOrderId());
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::SameLine();
+            ImGui::TextColored(oStatus, "  button to receive the order");
+        }
+        else if (o.GetStatus() == OrderStatus::PENDING) {
+            ImGui::TextColored(oStatus, "Order Pending for Dealer's Approval");
+        }
+        else if (o.GetStatus() == OrderStatus::REJECTED) {
+            ImGui::TextColored(oStatus, "Order Rejected");
+        }
+        else {
+            ImGui::TextColored(oStatus, "Order Received");
+        }
 
         ImGui::EndChild();
         ImGui::PopStyleColor();

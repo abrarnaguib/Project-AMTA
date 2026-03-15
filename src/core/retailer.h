@@ -39,6 +39,7 @@ public:
 
     // Orders
     Order PlaceOrder(int orderId, int dealerId, int productId, int quantity);
+    void RespondToOrder(int orderId, OrderStatus status);
 
     void AddOrderToHistory(const Order &order);
     const std::vector<Order> &GetOrderHistory() const

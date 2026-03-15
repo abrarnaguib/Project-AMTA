@@ -407,6 +407,8 @@ Order* Database::PlaceOrder(int retailerId, int dealerId, int productId, int qua
 // correct authorization of the dealer
 void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
     Order* o = FindOrder(orderId);
+    Dealer* d = GetDealer(FindUserById(dealerId));
+    Retailer* r = GetRetailer(FindUserById(o->GetRetailerId()));
     if (!o) {
         throw OrderException("Order ID " + std::to_string(orderId) + " not found.\n");
     }
@@ -415,15 +417,21 @@ void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
     }
     if (accept) {
         o->Accept();
+        d->RespondToOrder(orderId, OrderStatus::ACCEPTED);
+        r->RespondToOrder(orderId, OrderStatus::ACCEPTED);
     }
     else {
         o->Reject();
+        d->RespondToOrder(orderId, OrderStatus::REJECTED);
+        r->RespondToOrder(orderId, OrderStatus::REJECTED);
     }
     SaveAll();
 }
 // marks the order as completed
 void Database::CompleteOrder(int orderId, int retailerId) {
     Order* o = FindOrder(orderId);
+    Dealer* d = GetDealer(FindUserById(o->GetDealerId()));
+    Retailer* r = GetRetailer(FindUserById(retailerId));
     if (!o) {
         throw OrderException("Order ID " + std::to_string(orderId) + " not found.\n");
     }
@@ -431,6 +439,8 @@ void Database::CompleteOrder(int orderId, int retailerId) {
         throw AuthException("You are not authorized to complete this order.");
     }
     o->Complete();
+    d->RespondToOrder(orderId, OrderStatus::COMPLETED);
+    r->RespondToOrder(orderId, OrderStatus::COMPLETED);
     SaveAll();
 }
 

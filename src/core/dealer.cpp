@@ -100,16 +100,18 @@ void Dealer::AddIncomingOrder(const Order &order)
     m_orders.push_back(order);
 }
 
-void Dealer::RespondToOrder(int orderId, bool accept)
+void Dealer::RespondToOrder(int orderId, OrderStatus status)
 {
     for (auto &o : m_orders)
     {
         if (o.GetOrderId() == orderId)
         {
-            if (accept)
+            if (status == OrderStatus::ACCEPTED)
                 o.Accept();
-            else
+            else if (status == OrderStatus::REJECTED)
                 o.Reject();
+            else if (status == OrderStatus::COMPLETED)
+                o.Complete();
             return;
         }
     }
