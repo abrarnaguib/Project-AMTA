@@ -517,6 +517,9 @@ static void RenderDealerPanel(App &app) {
         ImGui::PopStyleColor(3);
         ImGui::Spacing();
     }
+    else {
+        ImGui::PopStyleColor();
+    }
 
     // product catalogue
     SectionLabel(COL_ACCENT, "Your Products");

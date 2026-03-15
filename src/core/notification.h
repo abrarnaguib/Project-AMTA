@@ -22,20 +22,46 @@ enum class NotificationType
 std::string NotificationTypeToString(NotificationType type);
 NotificationType StringToNotificationType(const std::string &str);
 
-struct Notification
+class Notification
 {
-    int notificationId;
-    int recipientUserId;
-    NotificationType type;
-    int orderId;
-    std::string message;
-    bool isRead;
+private:
+    int m_notificationId;
+    int m_recipientUserId;
+    NotificationType m_type;
+    int m_orderId;
+    std::string m_message;
+    bool m_isRead;
 
-    Notification(int nid, int recipientId, NotificationType t,
-                 int oid, const std::string &msg)
-        : notificationId(nid), recipientUserId(recipientId),
-          type(t), orderId(oid), message(msg), isRead(false) {}
+    // Constraint Helpers
+    static void ValidateId(int id, const std::string &fieldName);
+    static void ValidateMessage(const std::string &msg);
 
-        std::string Serialize() const;
+public:
+    Notification(int nid, int recipientId, NotificationType t, int oid, const std::string &msg);
+
+    int GetNotificationId() const { 
+        return m_notificationId; 
+    }
+    int GetRecipientUserId() const { 
+        return m_recipientUserId; 
+    }
+    NotificationType GetType() const { 
+        return m_type; 
+    }
+    int GetOrderId() const { 
+        return m_orderId; 
+    }
+    std::string GetMessage() const { 
+        return m_message; 
+    }
+    bool IsRead() const { 
+        return m_isRead; 
+    }
+
+    void MarkAsRead() { 
+        m_isRead = true; 
+    }
+
+    std::string Serialize() const;
     static Notification Deserialize(const std::string &line);
 };

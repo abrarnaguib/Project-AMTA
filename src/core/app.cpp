@@ -299,7 +299,7 @@ int App::UnreadNotificationCount() const {
     int uid = m_state.currentUser->GetUserId();
     int count = 0;
     for (const auto& n : m_db.GetAllNotifications())
-        if (n.recipientUserId == uid && !n.isRead) {
+        if (n.GetRecipientUserId() == uid && !n.IsRead()) {
             ++count;
         }
     return count;

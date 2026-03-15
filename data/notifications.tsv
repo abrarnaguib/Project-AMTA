@@ -2,3 +2,7 @@
 2	1	ORDER_PLACED	2	0	New order #2: 5x 'one piece vol2' from 'user1'.
 3	2	ORDER_ACCEPTED	1	0	Your order #1 for 'one piece vol1' was ACCEPTED by 'user2'.
 4	2	ORDER_ACCEPTED	2	0	Your order #2 for 'one piece vol2' was ACCEPTED by 'user2'.
+5	1	ORDER_PLACED	3	0	New order #3: 10x 'one piece vol1' from 'user1'.
+6	1	ORDER_PLACED	4	0	New order #4: 5x 'one piece vol2' from 'user1'.
+7	2	ORDER_ACCEPTED	3	0	Your order #3 for 'one piece vol1' was ACCEPTED by 'user2'.
+8	2	ORDER_REJECTED	4	0	Your order #4 for 'one piece vol2' was REJECTED by 'user2'.

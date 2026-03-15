@@ -1,14 +1,33 @@
 #include "notification.h"
 
+void Notification::ValidateId(int id, const std::string &fieldName)
+{
+    if (id <= 0) {
+        throw NotificationException("Invalid " + fieldName + ".");
+    }
+}
+
+void Notification::ValidateMessage(const std::string &msg)
+{
+    if (msg.empty()) {
+        throw NotificationException("Notification message cannot be empty.");
+    }
+}
+
+Notification::Notification(int nid, int recipientId, NotificationType t, int oid, const std::string &msg)
+    : m_notificationId(nid), m_recipientUserId(recipientId), m_type(t), m_orderId(oid), m_message(msg), m_isRead(false)
+{
+    ValidateId(nid, "notification ID");
+    ValidateId(recipientId, "recipient ID");
+    ValidateId(oid, "order ID");
+    ValidateMessage(msg);
+}
+
 std::string Notification::Serialize() const
 {
     std::ostringstream oss;
-    oss << notificationId << "\t"
-        << recipientUserId << "\t"
-        << NotificationTypeToString(type) << "\t"
-        << orderId << "\t"
-        << (isRead ? "1" : "0") << "\t"
-        << message;
+    oss << m_notificationId << "\t" << m_recipientUserId << "\t" << NotificationTypeToString(m_type) << "\t"
+        << m_orderId << "\t" << (m_isRead ? "1" : "0") << "\t" << m_message;
     return oss.str();
 }
 
@@ -32,7 +51,7 @@ Notification Notification::Deserialize(const std::string &line)
     std::getline(iss, msg);
 
     Notification n(nid, rid, StringToNotificationType(typeStr), oid, msg);
-    n.isRead = read;
+    n.m_isRead = read;
     return n;
 }
 
