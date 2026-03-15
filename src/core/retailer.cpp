@@ -63,6 +63,23 @@ void Retailer::AddOrderToHistory(const Order &order)
     m_orderHistory.push_back(order);
 }
 
+void Retailer::RespondToOrder(int orderId, OrderStatus status)
+{
+    for (auto &o : m_orderHistory)
+    {
+        if (o.GetOrderId() == orderId) {
+            if (status == OrderStatus::ACCEPTED)
+                o.Accept();
+            else if (status == OrderStatus::REJECTED)
+                o.Reject();
+            else if (status == OrderStatus::COMPLETED) 
+                o.Complete();
+            return;
+        }
+    }
+    throw OrderException("Order ID " + std::to_string(orderId) + " not found.");
+}
+
 // Tracking Review
 void Retailer::MarkOrderReviewed(int orderId)
 {

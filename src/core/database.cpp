@@ -19,6 +19,10 @@ std::string Database::ProductsFile() const {
 std::string Database::OrdersFile() const {
     return m_dataDir + "/orders.tsv";
 }
+std::string Database::NotificationsFile() const {
+     return m_dataDir + "/notifications.tsv"; 
+}
+
 
 void Database::EnsureDataDir() const {
     #ifdef _WIN32
@@ -53,6 +57,12 @@ void Database::LoadAll() {
     catch (...) {
 
     }
+    try { 
+        LoadNotifications();
+    } 
+    catch (...) {
+
+    }
 }
 
 // saves back in .tsv format
@@ -61,18 +71,20 @@ void Database::SaveAll() const {
     SaveUsers();
     SaveProducts();
     SaveOrders();
+    SaveNotifications();
 }
 
 // reads from the .tsv file format
+// reads users.tsv on startup and loads all users into memory
 void Database::LoadUsers() {
     std::ifstream f(UsersFile());
     if (!f) {
-        return ;
+        return;
     }
     std::string line;
     while (std::getline(f, line)) {
         if (line.empty()) {
-            continue ;
+            continue;
         }
         std::istringstream iss(line);
         std::string tok;
@@ -115,11 +127,11 @@ void Database::LoadUsers() {
     }
 }
 
-// converts a tsv line to product object, if failed, show's an warning
+// reads products.tsv on startup and loads all products into memory
 void Database::LoadProducts() {
     std::ifstream f(ProductsFile());
     if (!f) {
-        return ;
+        return;
     }
     std::string line;
     while (std::getline(f, line)) {
@@ -138,17 +150,24 @@ void Database::LoadProducts() {
             m_nextProductId = p.GetProductId() + 1;
         }
     }
+
+    // Re-populate dealer's available products in retailer availavkkle product window
+    for (const auto& p : m_products) {
+        Dealer* d = GetDealer(p.GetDealerId());
+        if (d) d->AddProduct(p);
+    }
 }
-// same working format
+
+// reads orders.tsv on startup and loads all orders into memory
 void Database::LoadOrders() {
     std::ifstream f(OrdersFile());
     if (!f) {
-        return ;
+        return;
     }
     std::string line;
     while (std::getline(f, line)) {
         if (line.empty()) {
-            continue ;
+            continue;
         }
         try {
             m_orders.push_back(Order::Deserialize(line));
@@ -162,9 +181,45 @@ void Database::LoadOrders() {
             m_nextOrderId = o.GetOrderId() + 1;
         }
     }
+
+    // Re-populate dealer's pending orders and send the order to his retailer's order history
+    for (const auto& o : m_orders) {
+        Dealer* d = GetDealer(o.GetDealerId());
+        Retailer* r = GetRetailer(o.GetRetailerId());
+        if (d && o.GetStatus() != OrderStatus::COMPLETED) {
+            d->AddIncomingOrder(o);
+        }
+        if (r) {
+            r->AddOrderToHistory(o);
+        }
+    }
+}
+
+// reads notifications.tsv on startup and loads all notifications into memory
+void Database::LoadNotifications() {
+    std::ifstream f(NotificationsFile());
+    if (!f) return;
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        try {
+            m_notifications.push_back(Notification::Deserialize(line));
+        } 
+        catch (const std::exception& e) {
+            std::cerr << "[Database] Skipping corrupt notification: " << e.what() << "\n";
+        }
+    }
+    for (const auto& n : m_notifications) {
+        if (n.GetNotificationId() >= m_nextNotificationId) {
+            m_nextNotificationId = n.GetNotificationId() + 1;
+        }
+    }
 }
 
 // converts objects and write to the tsv file
+// writes all in-memory users to users.tsv
 void Database::SaveUsers() const {
     std::ofstream f(UsersFile());
     if (!f) {
@@ -174,7 +229,7 @@ void Database::SaveUsers() const {
         f << u->Serialize() << '\n';
     }
 }
-// same procedure
+// writes all in-memory products to products.tsv
 void Database::SaveProducts() const {
     std::ofstream f(ProductsFile());
     if (!f) {
@@ -184,7 +239,7 @@ void Database::SaveProducts() const {
         f << p.Serialize() << '\n';
     }
 }
-// same procedure
+// writes all in-memory orders to orders.tsv
 void Database::SaveOrders() const {
     std::ofstream f(OrdersFile());
     if (!f) {
@@ -195,6 +250,17 @@ void Database::SaveOrders() const {
     }
 }
 
+
+// writes all in-memory notifications to notifications.tsv
+void Database::SaveNotifications() const {
+    std::ofstream f(NotificationsFile());
+    if (!f) throw DatabaseException("Cannot open notifications file for writing.");
+    for (const auto& n : m_notifications) {
+        f << n.Serialize() << "\n";
+    }
+}
+
+// ---User---
 // returns true if username taken
 bool Database::UsernameExists(const std::string &username) const {
     return FindUserByName(username) != nullptr;
@@ -259,15 +325,25 @@ User* Database::FindUserByName(const std::string &username) const {
     return nullptr;
 }
 
-// confirms dealer using userId
+// confirms dealer using userId or user
 Dealer* Database::GetDealer(int userId) const {
     return dynamic_cast<Dealer*> (FindUserById(userId));
 }
+
+Dealer* Database::GetDealer(User* user) const {
+    return dynamic_cast<Dealer*> (user);
+}
+
 // same procedure
 Retailer* Database::GetRetailer(int userId) const {
     return dynamic_cast<Retailer*>(FindUserById(userId));
 }
 
+Retailer* Database::GetRetailer(User* user) const {
+    return dynamic_cast<Retailer*>(user);
+}
+
+// ---Product---
 // verifies dealer and adds product to global product list as well as dealer's list
 Product* Database::AddProduct(int dealerId, const std::string &name, const std::string &category, double price, int stock) {
     Dealer* d = GetDealer(dealerId);
@@ -304,6 +380,8 @@ Product* Database::FindProduct(int productId) const {
     }
     return nullptr;
 }
+
+// ---Order---
 // verifies retailer, dealer and product. deducts if product exists
 Order* Database::PlaceOrder(int retailerId, int dealerId, int productId, int quantity) {
     Retailer* r = GetRetailer(retailerId);
@@ -329,6 +407,8 @@ Order* Database::PlaceOrder(int retailerId, int dealerId, int productId, int qua
 // correct authorization of the dealer
 void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
     Order* o = FindOrder(orderId);
+    Dealer* d = GetDealer(FindUserById(dealerId));
+    Retailer* r = GetRetailer(FindUserById(o->GetRetailerId()));
     if (!o) {
         throw OrderException("Order ID " + std::to_string(orderId) + " not found.\n");
     }
@@ -337,21 +417,33 @@ void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
     }
     if (accept) {
         o->Accept();
+        d->RespondToOrder(orderId, OrderStatus::ACCEPTED);
+        r->RespondToOrder(orderId, OrderStatus::ACCEPTED);
     }
     else {
         o->Reject();
+        d->RespondToOrder(orderId, OrderStatus::REJECTED);
+        r->RespondToOrder(orderId, OrderStatus::REJECTED);
     }
     SaveAll();
 }
 // marks the order as completed
-void Database::CompleteOrder(int orderId) {
+void Database::CompleteOrder(int orderId, int retailerId) {
     Order* o = FindOrder(orderId);
+    Dealer* d = GetDealer(FindUserById(o->GetDealerId()));
+    Retailer* r = GetRetailer(FindUserById(retailerId));
     if (!o) {
         throw OrderException("Order ID " + std::to_string(orderId) + " not found.\n");
     }
+    if (o->GetRetailerId() != retailerId){
+        throw AuthException("You are not authorized to complete this order.");
+    }
     o->Complete();
+    d->RespondToOrder(orderId, OrderStatus::COMPLETED);
+    r->RespondToOrder(orderId, OrderStatus::COMPLETED);
     SaveAll();
 }
+
 Order* Database::FindOrder(int orderId) const {
     for (auto &o: const_cast<std::vector<Order>&> (m_orders)) {
         if (o.GetOrderId() == orderId) {
@@ -359,4 +451,32 @@ Order* Database::FindOrder(int orderId) const {
         }
     }
     return nullptr;
+}
+
+// --- Notifaction ---
+// creates notification and saves it in file while returning a pointer to it
+Notification* Database::AddNotification(int recipientId, NotificationType type,
+                                         int orderId, const std::string& msg) {
+    if (!FindUserById(recipientId)) {
+        throw DatabaseException("Recipient user ID " + std::to_string(recipientId) + " not found.\n");
+    }
+    if (!FindOrder(orderId)) {
+        throw DatabaseException("Order ID " + std::to_string(orderId) + " not found.\n");
+    }
+    m_notifications.emplace_back(m_nextNotificationId++, recipientId, type, orderId, msg);
+    Notification* n = &m_notifications.back();
+    SaveNotifications();
+    return n;
+}
+
+// finds a notification by ID, marks it as read, and saves to file.
+void Database::MarkNotificationRead(int notificationId) {
+    for (auto& n : m_notifications) {
+        if (n.GetNotificationId() == notificationId) {
+            n.MarkAsRead();
+            SaveNotifications();
+            return;
+        }
+    }
+    throw NotificationException("Notification ID " + std::to_string(notificationId) + " not found.\n");
 }
