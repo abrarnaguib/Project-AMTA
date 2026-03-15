@@ -160,8 +160,18 @@ bool App::PlaceOrder(int productId, int quantity)
             m_state.errorMessage = "Product not found.";
             return false;
         }
-        m_db.PlaceOrder(m_state.currentUser->GetUserId(),
-                        p->GetDealerId(), productId, quantity);
+        Order* o = m_db.PlaceOrder(m_state.currentUser->GetUserId(), p->GetDealerId(), productId, quantity);
+
+        // Notifies delaer of new order that has been placed on their product
+        m_db.AddNotification(
+            p->GetDealerId(),
+            NotificationType::ORDER_PLACED,
+            o->GetOrderId(),
+            "New order #" + std::to_string(o->GetOrderId()) + ": " +
+            std::to_string(quantity) + "x '" + p->GetName() +
+            "' from '" + m_state.currentUser->GetUsername() + "'."
+        );
+
         m_state.infoMessage = "Order placed successfully!";
         return true;
     }
@@ -182,7 +192,22 @@ bool App::AcceptOrder(int orderId)
     }
     try
     {
+        Order* o = m_db.FindOrder(orderId);
+        Product* p = m_db.FindProduct(o->GetProductId());
+        std::string productName = p->GetName();
+
         m_db.RespondToOrder(orderId, m_state.currentUser->GetUserId(), true);
+
+        // Notifies the retailer that their order has been accepted by the dealer
+        m_db.AddNotification(
+            o->GetRetailerId(),
+            NotificationType::ORDER_ACCEPTED,
+            orderId,
+            "Your order #" + std::to_string(orderId) +
+            " for '" + productName + "' was ACCEPTED by '" +
+            m_state.currentUser->GetUsername() + "'."
+        );
+
         m_state.infoMessage = "Order accepted.";
         return true;
     }
@@ -203,7 +228,25 @@ bool App::RejectOrder(int orderId)
     }
     try
     {
+        Order* o = m_db.FindOrder(orderId);
+        Product* p = m_db.FindProduct(o->GetProductId());
+        std::string productName = p->GetName();
+
         m_db.RespondToOrder(orderId, m_state.currentUser->GetUserId(), false);
+        
+        // add the ordered amount to stock
+        if (p) p->SetStock(p->GetStock() + o->GetQuantity());
+
+        // Notifies the retailer that their order has been rejected by the dealer
+        m_db.AddNotification(
+            o->GetRetailerId(),
+            NotificationType::ORDER_REJECTED,
+            orderId,
+            "Your order #" + std::to_string(orderId) +
+            " for '" + productName + "' was REJECTED by '" +
+            m_state.currentUser->GetUsername() + "'."
+        );
+
         m_state.infoMessage = "Order rejected.";
         return true;
     }
@@ -224,7 +267,22 @@ bool App::CompleteOrder(int orderId)
     }
     try
     {
+        Order* o = m_db.FindOrder(orderId);
+        Product* p = m_db.FindProduct(o->GetProductId());
+        std::string productName = p->GetName();
+
         m_db.CompleteOrder(orderId, m_state.currentUser->GetUserId());
+
+        // Notifies the dealer that the retailer has marked the order as completed
+        m_db.AddNotification(
+            o->GetDealerId(),
+            NotificationType::ORDER_COMPLETED,
+            orderId,
+            "Order #" + std::to_string(orderId) +
+            " for '" + productName + "' marked COMPLETED by '" +
+            m_state.currentUser->GetUsername() + "'."
+        );
+
         m_state.infoMessage = "Order #" + std::to_string(orderId) + " marked as complete.";
         return true;
     }
@@ -233,4 +291,21 @@ bool App::CompleteOrder(int orderId)
         m_state.errorMessage = e.what();
         return false;
     }
+}
+
+// Returns number of unread notifications for current logged-in user
+int App::UnreadNotificationCount() const {
+    if (!m_state.isLoggedIn) return 0;
+    int uid = m_state.currentUser->GetUserId();
+    int count = 0;
+    for (const auto& n : m_db.GetAllNotifications())
+        if (n.recipientUserId == uid && !n.isRead) {
+            ++count;
+        }
+    return count;
+}
+
+// Marks a specific notification as read by its ID
+void App::MarkNotificationRead(int notificationId) {
+    m_db.MarkNotificationRead(notificationId);
 }

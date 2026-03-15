@@ -19,6 +19,10 @@ std::string Database::ProductsFile() const {
 std::string Database::OrdersFile() const {
     return m_dataDir + "/orders.tsv";
 }
+std::string Database::NotificationsFile() const {
+     return m_dataDir + "/notifications.tsv"; 
+}
+
 
 void Database::EnsureDataDir() const {
     #ifdef _WIN32
@@ -53,6 +57,12 @@ void Database::LoadAll() {
     catch (...) {
 
     }
+    try { 
+        LoadNotifications();
+    } 
+    catch (...) {
+
+    }
 }
 
 // saves back in .tsv format
@@ -61,6 +71,7 @@ void Database::SaveAll() const {
     SaveUsers();
     SaveProducts();
     SaveOrders();
+    SaveNotifications();
 }
 
 // reads from the .tsv file format
@@ -371,4 +382,48 @@ Order* Database::FindOrder(int orderId) const {
         }
     }
     return nullptr;
+}
+
+// creates notification and saves it in file while returning a pointer to it
+Notification* Database::AddNotification(int recipientId, NotificationType type,
+                                         int orderId, const std::string& msg) {
+    m_notifications.emplace_back(m_nextNotificationId++, recipientId, type, orderId, msg);
+    SaveNotifications();
+    return &m_notifications.back();
+}
+
+// finds a notification by ID, marks it as read, and saves to file.
+void Database::MarkNotificationRead(int notificationId) {
+    for (auto& n : m_notifications) {
+        if (n.notificationId == notificationId) {
+            n.isRead = true;
+            SaveNotifications();
+            return;
+        }
+    }
+}
+
+// reads notifications.tsv on startup and loads all notifications into memory
+void Database::LoadNotifications() {
+    std::ifstream f(NotificationsFile());
+    if (!f) return;
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty()) continue;
+        try {
+            m_notifications.push_back(Notification::Deserialize(line));
+        } catch (const std::exception& e) {
+            std::cerr << "[Database] Skipping corrupt notification: " << e.what() << "\n";
+        }
+    }
+    for (const auto& n : m_notifications)
+        if (n.notificationId >= m_nextNotificationId)
+            m_nextNotificationId = n.notificationId + 1;
+}
+
+// writes all in-memory notifications to notifications.tsv
+void Database::SaveNotifications() const {
+    std::ofstream f(NotificationsFile());
+    if (!f) throw DatabaseException("Cannot open notifications file for writing.");
+    for (const auto& n : m_notifications) f << n.Serialize() << "\n";
 }

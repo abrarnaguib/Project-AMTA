@@ -5,6 +5,7 @@
 #include "admin.h"
 #include "product.h"
 #include "order.h"
+#include "notification.h"
 #include <vector>
 #include <memory>
 #include <string>
@@ -55,28 +56,38 @@ public:
         return m_orders;
     }
 
+    // notification related operations
+    Notification* AddNotification(int recipientId, NotificationType type, int orderId, const std::string& msg);
+    void MarkNotificationRead(int notificationId);
+    const std::vector<Notification>& GetAllNotifications() const { return m_notifications; }
+
 private:
     std::string m_dataDir;
     std::vector<std::unique_ptr<User>> m_users;
     std::vector<Product> m_products;
     std::vector<Order> m_orders;
+    std::vector<Notification> m_notifications;
 
     // tracks increments
     int m_nextUserId = 1;
     int m_nextProductId = 1;
     int m_nextOrderId = 1;
+    int m_nextNotificationId = 1;
 
     // helper functions: returns the file paths only
     std::string UsersFile() const; // deals with retailers, dealers, admins 
     std::string ProductsFile() const; // deals with all the product items
     std::string OrdersFile() const; // deals with all the placed orders
+    std::string NotificationsFile() const; // deals with all the notifications
 
     void LoadUsers();
     void LoadProducts();
     void LoadOrders();
+    void LoadNotifications();
     void SaveUsers() const;
     void SaveProducts() const;
     void SaveOrders() const;
+    void SaveNotifications() const;
 
     bool UsernameExists(const std::string &username) const;
     void EnsureDataDir() const;

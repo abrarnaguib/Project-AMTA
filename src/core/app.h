@@ -1,6 +1,8 @@
 #pragma once
 #include "database.h"
+#include "notification.h"
 #include <string>
+#include <vector>
 
 struct AppState
 {   
@@ -44,14 +46,11 @@ public:
 
     // Auth operations (called by GUI)
     bool Login(const std::string &username, const std::string &password);
-    bool Register(const std::string &username, const std::string &password,
-                  const std::string &role, const std::string &extraName,
-                  const std::string &location);
+    bool Register(const std::string &username, const std::string &password, const std::string &role, const std::string &extraName, const std::string &location);
     void Logout();
 
     // Product operations
-    bool AddProduct(const std::string &name, const std::string &category,
-                    double price, int stock);
+    bool AddProduct(const std::string &name, const std::string &category, double price, int stock);
     bool DeleteProduct(int productId);
     bool UpdateProduct(int productId, double newPrice, int newStock);
 
@@ -61,6 +60,10 @@ public:
     bool RejectOrder(int orderId);
     bool CompleteOrder(int orderId);
 
+    // Notification actions
+    int UnreadNotificationCount() const;
+    void MarkNotificationRead(int notificationId);
+    
     // Accessors
     AppState &GetState() { return m_state; }
     Database &GetDatabase() { return m_db; }
