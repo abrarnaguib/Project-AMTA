@@ -149,6 +149,12 @@ void Database::LoadProducts() {
             m_nextProductId = p.GetProductId() + 1;
         }
     }
+
+    // Re-populate dealer's available products in retailer availavkkle product window
+    for (const auto& p : m_products) {
+        Dealer* d = GetDealer(p.GetDealerId());
+        if (d) d->AddProduct(p);
+    }
 }
 // same working format
 void Database::LoadOrders() {
@@ -172,6 +178,14 @@ void Database::LoadOrders() {
         if (o.GetOrderId() >= m_nextOrderId) {
             m_nextOrderId = o.GetOrderId() + 1;
         }
+    }
+
+    // Re-populate dealer's pending orders and send the order to his retailer's order history
+    for (const auto& o : m_orders) {
+        Dealer*   d = GetDealer(o.GetDealerId());
+        Retailer* r = GetRetailer(o.GetRetailerId());
+        if (d && o.GetStatus() == OrderStatus::PENDING) d->AddIncomingOrder(o);
+        if (r) r->AddOrderToHistory(o);
     }
 }
 
