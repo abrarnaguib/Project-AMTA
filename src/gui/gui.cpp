@@ -300,7 +300,7 @@ static void RenderLoginPage (App &app) {
     ImGui::Spacing();
 
     ImGui::Text("Password");
-    ImGui::InputText("##login_password", password, sizeof(password));
+    ImGui::InputText("##login_password", password, sizeof(password), ImGuiInputTextFlags_Password);
 
     PushAccentButton();
     bool loginPressed = ImGui::Button("  Login  ");
@@ -359,11 +359,11 @@ static void RenderRegisterPage (App &app) {
     ImGui::Spacing();
 
     ImGui::Text("Password");
-    ImGui::InputText("##reg_password", password, sizeof(password));
+    ImGui::InputText("##reg_password", password, sizeof(password), ImGuiInputTextFlags_Password);
     ImGui::Spacing();
 
     ImGui::Text("Confirm Password");
-    ImGui::InputText("##reg_confirm", confirm, sizeof(confirm));
+    ImGui::InputText("##reg_confirm", confirm, sizeof(confirm), ImGuiInputTextFlags_Password);
     if (confirm[0] != '\0') {
         if (std::string(password) == std::string(confirm)) {
             ImGui::TextColored(COL_SUCCESS, "  ✓ Passwords match");
