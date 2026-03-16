@@ -59,6 +59,7 @@ public:
     bool AcceptOrder(int orderId);
     bool RejectOrder(int orderId);
     bool CompleteOrder(int orderId);
+    bool SubmitReview(int orderId, int productId, int rating, const std::string& comment);
 
     // Notification actions
     int UnreadNotificationCount() const;

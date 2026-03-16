@@ -309,3 +309,21 @@ int App::UnreadNotificationCount() const {
 void App::MarkNotificationRead(int notificationId) {
     m_db.MarkNotificationRead(notificationId);
 }
+
+// Review
+
+bool App::SubmitReview(int orderId, int productId, int rating, const std::string& comment) {
+    m_state.ClearMessages();
+    if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::RETAILER) {
+        m_state.errorMessage = "Only retailers can submit reviews.";
+        return false;
+    }
+    try {
+        m_db.SubmitReview(m_state.currentUser->GetUserId(), orderId, productId, rating, comment);
+        m_state.infoMessage = "Review submitted!";
+        return true;
+    } catch (const std::exception& e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
+}

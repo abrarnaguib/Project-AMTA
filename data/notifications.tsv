@@ -19,3 +19,13 @@
 19	2	ORDER_REJECTED	4	0	Your order #4 for 'one piece vol2' was REJECTED by 'user2'.
 20	1	ORDER_COMPLETED	1	0	Order #1 for 'one piece vol1' marked COMPLETED by 'user1'.
 21	1	ORDER_COMPLETED	3	0	Order #3 for 'one piece vol1' marked COMPLETED by 'user1'.
+22	1	ORDER_PLACED	5	0	New order #5: 1x 'one piece vol1' from 'user4'.
+23	1	ORDER_PLACED	6	0	New order #6: 1x 'one piece vol1' from 'user4'.
+24	1	ORDER_PLACED	7	0	New order #7: 1x 'one piece vol1' from 'user4'.
+25	1	ORDER_PLACED	8	0	New order #8: 1x 'one piece vol1' from 'user4'.
+26	1	ORDER_PLACED	9	0	New order #9: 1x 'one piece vol1' from 'user4'.
+27	1	ORDER_PLACED	10	0	New order #10: 1x 'one piece vol1' from 'user4'.
+28	1	ORDER_PLACED	11	0	New order #11: 1x 'one piece vol2' from 'user4'.
+29	3	ORDER_PLACED	12	0	New order #12: 1x 'magic wand' from 'user4'.
+30	4	ORDER_ACCEPTED	12	0	Your order #12 for 'magic wand' was ACCEPTED by 'user3'.
+31	3	ORDER_COMPLETED	12	0	Order #12 for 'magic wand' marked COMPLETED by 'user4'.
