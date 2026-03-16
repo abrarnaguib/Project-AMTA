@@ -61,6 +61,14 @@ public:
     void MarkNotificationRead(int notificationId);
     const std::vector<Notification>& GetAllNotifications() const { return m_notifications; }
 
+    // in the public section, under "product related operations"
+    void SubmitReview(int retailerId, int orderId, int productId, int rating, const std::string& comment);
+    std::string ReviewsFile() const;
+
+    // in the private section
+    void LoadReviews();
+    void SaveReviews() const;
+
 private:
     std::string m_dataDir;
     std::vector<std::unique_ptr<User>> m_users;
