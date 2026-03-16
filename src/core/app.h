@@ -18,7 +18,8 @@ struct AppState
         REGISTER,
         DASHBOARD,
         PRODUCT_LIST,
-        PLACE_ORDER
+        PLACE_ORDER,
+        NOTIFICATIONS      // dedicated notifications page
     };
     Page currentPage = Page::HOME;
 
@@ -63,6 +64,8 @@ public:
     // Notification actions
     int UnreadNotificationCount() const;
     void MarkNotificationRead(int notificationId);
+    bool SendMessage(int recipientId, const std::string &msg);   // for future messaging
+    std::vector<const Notification*> GetNotificationsForUser() const; // for current logged-in user
     
     // Accessors
     AppState &GetState() { return m_state; }

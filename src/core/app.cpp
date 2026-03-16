@@ -309,3 +309,26 @@ int App::UnreadNotificationCount() const {
 void App::MarkNotificationRead(int notificationId) {
     m_db.MarkNotificationRead(notificationId);
 }
+
+// Returns notifications for the currently logged-in user, newest first
+std::vector<const Notification*> App::GetNotificationsForUser() const {
+    if (!m_state.isLoggedIn) {
+        return {};
+    }
+    return m_db.GetNotificationsForUser(m_state.currentUser->GetUserId());
+}
+
+
+// Sends a plain message notification to another user (no order attached)
+bool App::SendMessage(int recipientId, const std::string &msg) {
+    m_state.ClearMessages();
+    try {
+        m_db.SendMessage(recipientId, msg);
+        m_state.infoMessage = "Message sent.";
+        return true;
+    }
+    catch (const std::exception &e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
+}

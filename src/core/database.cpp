@@ -480,3 +480,30 @@ void Database::MarkNotificationRead(int notificationId) {
     }
     throw NotificationException("Notification ID " + std::to_string(notificationId) + " not found.\n");
 }
+
+
+// returns pointers to notifications for a specific user, newest first
+std::vector<const Notification*> Database::GetNotificationsForUser(int userId) const {
+    std::vector<const Notification*> result;
+    for (const auto& n : m_notifications) {
+        if (n.GetRecipientUserId() == userId) {
+            result.push_back(&n);
+        }
+    }
+    // reverse so newest comes first
+    std::reverse(result.begin(), result.end());
+    return result;
+}
+
+
+// sends a plain message notification (no order attached) for future messaging feature
+Notification* Database::SendMessage(int recipientId, const std::string& msg) {
+    if (!FindUserById(recipientId)) {
+        throw DatabaseException("Recipient user ID " + std::to_string(recipientId) + " not found.\n");
+    }
+    // orderId = -1 signals no associated order
+    m_notifications.emplace_back(m_nextNotificationId++, recipientId, NotificationType::MESSAGE, -1, msg);
+    Notification* n = &m_notifications.back();
+    SaveNotifications();
+    return n;
+}
