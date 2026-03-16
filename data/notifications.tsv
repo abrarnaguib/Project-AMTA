@@ -26,3 +26,6 @@
 26	1	ORDER_PLACED	9	0	New order #9: 1x 'one piece vol1' from 'user4'.
 27	1	ORDER_PLACED	10	0	New order #10: 1x 'one piece vol1' from 'user4'.
 28	1	ORDER_PLACED	11	0	New order #11: 1x 'one piece vol2' from 'user4'.
+29	3	ORDER_PLACED	12	0	New order #12: 1x 'magic wand' from 'user4'.
+30	4	ORDER_ACCEPTED	12	0	Your order #12 for 'magic wand' was ACCEPTED by 'user3'.
+31	3	ORDER_COMPLETED	12	0	Order #12 for 'magic wand' marked COMPLETED by 'user4'.
