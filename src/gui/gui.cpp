@@ -14,6 +14,7 @@ static void RenderRegisterPage (App &app);
 static void RenderDashBoard (App &app);
 static void RenderProductList (App &app);
 static void RenderPlaceOrderPage (App &app);
+static void RenderNotifications (App &app);
 static void RenderUtilBar (App &app); // Render the top utility bar (account info, login logout buttons etc.)
 static void RenderStatusBar (App &app);  // Render the bottom action status bar (wrong input, wrong password etc.)
 static void RenderDealerPanel (App &app); // Render dealer dashboard
@@ -27,7 +28,8 @@ static const ImVec4 COL_SUCCESS { 0.18f, 0.80f, 0.44f, 1.00f }; // green
 static const ImVec4 COL_DANGER { 0.90f, 0.25f, 0.25f, 1.00f }; // red
 static const ImVec4 COL_MUTED { 0.60f, 0.60f, 0.60f, 1.00f }; // dark grey
 static const ImVec4 COL_WARN { 1.00f, 0.75f, 0.10f, 1.00f }; // yellow
-static const ImVec4 COL_BG_CARD { 0.14f, 0.14f, 0.18f, 1.00f }; // grey
+static const ImVec4 COL_DIM_BG_CARD { 0.14f, 0.14f, 0.18f, 1.00f }; // grey
+static const ImVec4 COL_BRIGHT_BG_CARD { 0.18f, 0.22f, 0.30f, 1.00f }; //blue-gray
 
 
 // Helper functions for pushing a styled button colour
@@ -86,6 +88,36 @@ static void SectionLabelWidth(const ImVec4 &col, float width, const char* label)
     ImGui::Spacing();
 }
 
+static ImVec4 NotifColour(NotificationType t) {
+    switch (t) {
+        case NotificationType::ORDER_PLACED:    
+            return COL_ACCENT;
+        case NotificationType::ORDER_ACCEPTED:  
+            return COL_SUCCESS;
+        case NotificationType::ORDER_REJECTED:  
+            return COL_DANGER;
+        case NotificationType::ORDER_COMPLETED: 
+            return COL_WARN;
+        case NotificationType::MESSAGE: 
+            return COL_ACCENT;
+    }
+    return COL_MUTED;
+}
+
+static ImVec4 OrderColour(OrderStatus s) {
+    switch (s) {
+        case OrderStatus::ACCEPTED: 
+            return COL_SUCCESS;
+        case OrderStatus::PENDING:
+            return COL_WARN;
+        case OrderStatus::REJECTED:
+            return COL_DANGER;
+        case OrderStatus::COMPLETED: 
+            return COL_ACCENT;
+    }
+    return COL_MUTED;
+}
+
 namespace GUI {
     void Render(App& app) {
         // window styles
@@ -136,6 +168,9 @@ namespace GUI {
         case AppState::Page::PLACE_ORDER:
             RenderPlaceOrderPage(app);
             break;
+        case AppState::Page::NOTIFICATIONS:
+            RenderNotifications(app);
+            break;
         default:
             break;
         }
@@ -175,13 +210,35 @@ static void RenderUtilBar (App &app) {
         std::string roleStr = (state.currentUser->GetRole() == UserRole::DEALER ? "[dealer]" : "[retailer]");
         std::string usernameStr = state.currentUser->GetUsername();
         std::string buttonName = (state.currentPage == AppState::Page::DASHBOARD ? "Home" : "DashBoard");
-        std::string lhsText = roleStr + usernameStr + "    " + buttonName + "    Logout  ";
+        
+        int unread = app.UnreadNotificationCount();
+        std::string notifLabel = "  Notifications";
+        if (unread > 0) {
+            notifLabel += " (" + std::to_string(unread) + ")  ";
+        }
+        else {
+            notifLabel += "  ";
+        }
+        
+        std::string lhsText = roleStr + usernameStr + "    " + notifLabel + "    " + buttonName + "    Logout  ";
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(lhsText.c_str()).x - ImGui::CalcTextSize("      ").x);
 
         ImGui::TextColored(COL_ACCENT, "%s", roleStr.c_str());
         ImGui::SameLine();
 
         ImGui::TextColored(COL_SUCCESS, "%s", usernameStr.c_str());
+        ImGui::SameLine();
+
+        if (unread > 0) {
+            PushWarnButton();
+        }
+        else {
+            PushAccentButton();
+        }
+        if (ImGui::Button(notifLabel.c_str())) {
+            state.currentPage = AppState::Page::NOTIFICATIONS;
+        }
+        ImGui::PopStyleColor(3);
         ImGui::SameLine();
 
         PushAccentButton();
@@ -535,7 +592,7 @@ static void RenderDealerPanel(App &app) {
     const int pw = 80;
     for (const auto& p : d->GetProducts()) {
         ImGui::PushID(p.GetProductId());
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
         ImGui::BeginChild("##ordercard", {0, pw}, ImGuiChildFlags_Borders);
 
         ImGui::TextColored(COL_ACCENT, "[%d] %s", p.GetProductId(), p.GetName().c_str());
@@ -603,27 +660,10 @@ static void RenderDealerPanel(App &app) {
     const int ow = 70;
     for (const auto& o : d->GetOrders()) {
         ImGui::PushID(o.GetOrderId());
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
         ImGui::BeginChild("##ordercard", {0, ow}, ImGuiChildFlags_Borders);
 
-        ImVec4 oStatus;
-        switch (o.GetStatus())
-        {
-        case OrderStatus::ACCEPTED:
-            oStatus = COL_SUCCESS;
-            break;
-        case OrderStatus::PENDING:
-            oStatus = COL_WARN;
-            break;
-        case OrderStatus::REJECTED:
-            oStatus = COL_DANGER;
-            break;
-        case OrderStatus::COMPLETED:
-            oStatus = COL_ACCENT;
-            break;
-        default:
-            break;
-        }
+        ImVec4 oStatus = OrderColour(o.GetStatus());
         ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
         ImGui::SameLine(500);
         ImGui::TextColored(oStatus, "[%s]", o.GetStatusStr().c_str());
@@ -696,27 +736,10 @@ static void RenderRetailerPanel(App &app) {
     const int w = 60;
     for (const auto& o : r->GetOrderHistory()) {
         ImGui::PushID(o.GetOrderId());
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
         ImGui::BeginChild("##orderhist", {0, w}, ImGuiChildFlags_Borders);
 
-        ImVec4 oStatus;
-        switch (o.GetStatus())
-        {
-        case OrderStatus::ACCEPTED:
-            oStatus = COL_SUCCESS;
-            break;
-        case OrderStatus::PENDING:
-            oStatus = COL_WARN;
-            break;
-        case OrderStatus::REJECTED:
-            oStatus = COL_DANGER;
-            break;
-        case OrderStatus::COMPLETED:
-            oStatus = COL_ACCENT;
-            break;
-        default:
-            break;
-        }
+        ImVec4 oStatus = OrderColour(o.GetStatus());
         ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
         ImGui::SameLine(500);
         ImGui::TextColored(oStatus, "[%s]", o.GetStatusStr().c_str());
@@ -811,7 +834,7 @@ static void RenderProductList (App &app) {
         if (p.GetPrice() < minPrice || p.GetPrice() > maxPrice) continue;
         shown++;
         ImGui::PushID(p.GetProductId());
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_BG_CARD);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
         ImGui::BeginChild("##plist", {0, pw}, ImGuiChildFlags_Borders);
 
         ImGui::TextColored(COL_ACCENT, "[%d] %s", p.GetProductId(), p.GetName().c_str());
@@ -858,6 +881,83 @@ static void RenderProductList (App &app) {
     ImGui::Spacing();
 
     if (ImGui::Button("  Back to Home  ")) {
+        state.currentPage = AppState::Page::HOME;
+    }
+}
+
+// notification of a user
+static void RenderNotifications (App &app) {
+    AppState &state = app.GetState();
+
+    if (!state.isLoggedIn) {
+        ImGui::TextColored(COL_DANGER, "You must be logged in to view notifications.");
+        return;
+    }
+
+    // summary card
+    SectionLabel(COL_ACCENT, "Notifications");
+
+    // app wrapper already filtered and newest-first
+    std::vector<const Notification*> mine = app.GetNotificationsForUser();
+
+    // Mark all as read button
+    int unread = app.UnreadNotificationCount();
+    if (unread > 0) {
+        PushAccentButton();
+        if (ImGui::Button("  Mark all as read  ")) {
+            for (const auto *n : mine)
+                if (!n->IsRead())
+                    app.MarkNotificationRead(n->GetNotificationId());
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::Spacing();
+    }
+
+    if (mine.empty()) {
+        ImGui::TextColored(COL_MUTED, "  No notifications yet.");
+    }
+
+    // Render newest -> oldest
+    for (int i = 0; i < (int)mine.size(); ++i) {
+        const Notification *n = mine[i];
+        ImGui::PushID(n->GetNotificationId());
+
+        // Unread notifications get a brighter card
+        ImVec4 cardBg = n->IsRead() ? COL_DIM_BG_CARD : COL_BRIGHT_BG_CARD;
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
+        ImGui::BeginChild("##ncard", {0, 60}, ImGuiChildFlags_Borders);
+
+        ImVec4 badgeCol = NotifColour(n->GetType());
+        ImGui::TextColored(badgeCol, "[%s]", NotificationTypeToString(n->GetType()).c_str());
+        ImGui::SameLine();
+
+        // Unread dot
+        if (!n->IsRead()) {
+            ImGui::TextColored(COL_WARN, "● ");
+        }
+        ImGui::SameLine();
+
+        ImGui::TextWrapped("%s", n->GetMessage().c_str());
+        ImGui::Spacing();
+
+        if (!n->IsRead()) {
+            PushAccentButton();
+            if (ImGui::SmallButton("  Mark as Read  "))
+                app.MarkNotificationRead(n->GetNotificationId());
+            ImGui::PopStyleColor(3);
+        } else {
+            ImGui::TextColored(COL_MUTED, "  Read");
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
+
+    ImGui::Spacing();
+    if (ImGui::Button("  Back to Home")) {
         state.currentPage = AppState::Page::HOME;
     }
 }
