@@ -19,7 +19,7 @@ Notification::Notification(int nid, int recipientId, NotificationType t, int oid
 {
     ValidateId(nid, "notification ID");
     ValidateId(recipientId, "recipient ID");
-    ValidateId(oid, "order ID");
+    if (oid != -1) ValidateId(oid, "order ID");   // -1 is valid (no order)
     ValidateMessage(msg);
 }
 
@@ -67,6 +67,8 @@ std::string NotificationTypeToString(NotificationType type)
         return "ORDER_REJECTED";
     case NotificationType::ORDER_COMPLETED:
         return "ORDER_COMPLETED";
+    case NotificationType::MESSAGE:
+        return "MESSAGE";
     }
     return "UNKNOWN";
 }
@@ -81,5 +83,7 @@ NotificationType StringToNotificationType(const std::string &str)
         return NotificationType::ORDER_REJECTED;
     if (str == "ORDER_COMPLETED")
         return NotificationType::ORDER_COMPLETED;
+    if (str == "MESSAGE")
+        return NotificationType::MESSAGE;
     throw NotificationException("Unknown notification type: " + str);
 }

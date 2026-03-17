@@ -310,8 +310,30 @@ void App::MarkNotificationRead(int notificationId) {
     m_db.MarkNotificationRead(notificationId);
 }
 
-// Review
+// Returns notifications for the currently logged-in user, newest first
+std::vector<const Notification*> App::GetNotificationsForUser() const {
+    if (!m_state.isLoggedIn) {
+        return {};
+    }
+    return m_db.GetNotificationsForUser(m_state.currentUser->GetUserId());
+}
 
+
+// Sends a plain message notification to another user (no order attached)
+bool App::SendMessage(int recipientId, const std::string &msg) {
+    m_state.ClearMessages();
+    try {
+        m_db.SendMessage(recipientId, msg);
+        m_state.infoMessage = "Message sent.";
+        return true;
+    }
+    catch (const std::exception &e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
+}
+
+// Review
 bool App::SubmitReview(int orderId, int productId, int rating, const std::string& comment) {
     m_state.ClearMessages();
     if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::RETAILER) {
