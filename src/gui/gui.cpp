@@ -678,7 +678,7 @@ static void RenderDealerPanel(App &app) {
     for (const auto& o : d->GetOrders()) {
         ImGui::PushID(o.GetOrderId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
-        ImGui::BeginChild("##ordercard", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##productcard", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
         ImVec4 oStatus = OrderColour(o.GetStatus());
         ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());

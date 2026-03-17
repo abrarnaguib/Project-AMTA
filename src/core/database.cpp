@@ -186,7 +186,7 @@ void Database::LoadOrders() {
     for (const auto& o : m_orders) {
         Dealer* d = GetDealer(o.GetDealerId());
         Retailer* r = GetRetailer(o.GetRetailerId());
-        if (d && o.GetStatus() != OrderStatus::COMPLETED) {
+        if (d && (o.GetStatus() != OrderStatus::COMPLETED && o.GetStatus() != OrderStatus::REJECTED)) {
             d->AddIncomingOrder(o);
         }
         if (r) {

@@ -19,7 +19,6 @@ struct AppState
         DASHBOARD,
         PRODUCT_LIST,
         PLACE_ORDER,
-        NOTIFICATIONS      // dedicated notifications page
     };
     Page currentPage = Page::HOME;
 
