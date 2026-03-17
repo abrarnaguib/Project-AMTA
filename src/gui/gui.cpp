@@ -14,7 +14,7 @@ static void RenderRegisterPage (App &app);
 static void RenderDashBoard (App &app);
 static void RenderProductList (App &app);
 static void RenderPlaceOrderPage (App &app);
-static void RenderNotifications (App &app);
+static void RenderNotifications (App &app); // Notification pop-up rendering
 static void RenderUtilBar (App &app); // Render the top utility bar (account info, login logout buttons etc.)
 static void RenderStatusBar (App &app);  // Render the bottom action status bar (wrong input, wrong password etc.)
 static void RenderDealerPanel (App &app); // Render dealer dashboard
@@ -70,6 +70,18 @@ static void customSeperator(float width) {
     float thickness = 1.0f; 
     draw_list->AddLine(p1, p2, separator_color, thickness);
     ImGui::Dummy(ImVec2(width, ImGui::GetStyle().ItemSpacing.y)); 
+}
+
+// notification circle
+static void customNotificationCircle(ImVec2 pos, int count) {
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    float radius = 9.0f;
+    ImVec2 center = ImVec2(pos.x + style.FramePadding.x + ImGui::CalcTextSize("  Notifications  ").x + radius, pos.y + ImGui::GetFrameHeight() * 0.5f);
+    draw_list->AddCircleFilled(center, radius, ImGui::GetColorU32(COL_DANGER));
+    std::string countStr = std::to_string(count);
+    ImVec2 textSize = ImGui::CalcTextSize(countStr.c_str());
+    draw_list->AddText(ImVec2(center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f), IM_COL32(0, 0, 0, 255), countStr.c_str());
 }
 
 
@@ -168,9 +180,6 @@ namespace GUI {
         case AppState::Page::PLACE_ORDER:
             RenderPlaceOrderPage(app);
             break;
-        case AppState::Page::NOTIFICATIONS:
-            RenderNotifications(app);
-            break;
         default:
             break;
         }
@@ -212,12 +221,9 @@ static void RenderUtilBar (App &app) {
         std::string buttonName = (state.currentPage == AppState::Page::DASHBOARD ? "Home" : "DashBoard");
         
         int unread = app.UnreadNotificationCount();
-        std::string notifLabel = "  Notifications";
+        std::string notifLabel = "  Notifications  ";
         if (unread > 0) {
-            notifLabel += " (" + std::to_string(unread) + ")  ";
-        }
-        else {
-            notifLabel += "  ";
+            notifLabel += "   "; // empty space for the badge
         }
         
         std::string lhsText = roleStr + usernameStr + "    " + notifLabel + "    " + buttonName + "    Logout  ";
@@ -229,16 +235,29 @@ static void RenderUtilBar (App &app) {
         ImGui::TextColored(COL_SUCCESS, "%s", usernameStr.c_str());
         ImGui::SameLine();
 
-        if (unread > 0) {
-            PushWarnButton();
-        }
-        else {
-            PushAccentButton();
-        }
+        PushAccentButton(); 
+        ImVec2 btnPos = ImGui::GetCursorScreenPos(); // for notification pop-up alignment
         if (ImGui::Button(notifLabel.c_str())) {
-            state.currentPage = AppState::Page::NOTIFICATIONS;
+            ImGui::OpenPopup("NotificationsPopup");
         }
         ImGui::PopStyleColor(3);
+
+        if (unread > 0) {
+            customNotificationCircle(btnPos, unread);
+        }
+
+        // Align the popup right underneath the right edge of the button
+        ImGuiStyle& style = ImGui::GetStyle();
+        float btnWidth = ImGui::CalcTextSize(notifLabel.c_str()).x + style.FramePadding.x * 2.0f;
+        ImGuiIO &io = ImGui::GetIO();
+        ImGui::SetNextWindowPos(ImVec2(btnPos.x + btnWidth, btnPos.y + ImGui::GetFrameHeight() + 5.0f), ImGuiCond_Appearing, ImVec2(1.0f, 0.0f));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(io.DisplaySize.x * 0.375f, io.DisplaySize.y * 0.4f), ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.8f));
+        
+        if (ImGui::BeginPopup("NotificationsPopup")) {
+            RenderNotifications(app);
+            ImGui::EndPopup();
+        }
+
         ImGui::SameLine();
 
         PushAccentButton();
@@ -589,11 +608,10 @@ static void RenderDealerPanel(App &app) {
         ImGui::TextColored(COL_MUTED, "   No Products Lister Yet.");
     }
 
-    const int pw = 80;
     for (const auto& p : d->GetProducts()) {
         ImGui::PushID(p.GetProductId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
-        ImGui::BeginChild("##ordercard", {0, pw}, ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ordercard", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
         ImGui::TextColored(COL_ACCENT, "[%d] %s", p.GetProductId(), p.GetName().c_str());
         ImGui::SameLine(400);
@@ -657,11 +675,10 @@ static void RenderDealerPanel(App &app) {
         return;
     }
 
-    const int ow = 70;
     for (const auto& o : d->GetOrders()) {
         ImGui::PushID(o.GetOrderId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
-        ImGui::BeginChild("##ordercard", {0, ow}, ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ordercard", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
         ImVec4 oStatus = OrderColour(o.GetStatus());
         ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
@@ -733,11 +750,10 @@ static void RenderRetailerPanel(App &app) {
         return;
     }
 
-    const int w = 60;
     for (const auto& o : r->GetOrderHistory()) {
         ImGui::PushID(o.GetOrderId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
-        ImGui::BeginChild("##orderhist", {0, w}, ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##orderhist", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
         ImVec4 oStatus = OrderColour(o.GetStatus());
         ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
@@ -819,7 +835,6 @@ static void RenderProductList (App &app) {
     std::string filter(searchBuffer);
 
     int shown = 0;
-    const int pw = 75;
     for (const auto &p : app.GetDatabase().GetAllProducts()) {
         // apply filters
         if (!filter.empty()) {
@@ -835,7 +850,7 @@ static void RenderProductList (App &app) {
         shown++;
         ImGui::PushID(p.GetProductId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
-        ImGui::BeginChild("##plist", {0, pw}, ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##plist", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
         ImGui::TextColored(COL_ACCENT, "[%d] %s", p.GetProductId(), p.GetName().c_str());
         ImGui::SameLine(500);
@@ -917,6 +932,7 @@ static void RenderNotifications (App &app) {
         ImGui::TextColored(COL_MUTED, "  No notifications yet.");
     }
 
+    ImGui::BeginChild("##notif_scroll", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     // Render newest -> oldest
     for (int i = 0; i < (int)mine.size(); ++i) {
         const Notification *n = mine[i];
@@ -926,7 +942,7 @@ static void RenderNotifications (App &app) {
         ImVec4 cardBg = n->IsRead() ? COL_DIM_BG_CARD : COL_BRIGHT_BG_CARD;
 
         ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
-        ImGui::BeginChild("##ncard", {0, 60}, ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ncard", ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
         ImVec4 badgeCol = NotifColour(n->GetType());
         ImGui::TextColored(badgeCol, "[%s]", NotificationTypeToString(n->GetType()).c_str());
@@ -955,11 +971,7 @@ static void RenderNotifications (App &app) {
         ImGui::Spacing();
         ImGui::PopID();
     }
-
-    ImGui::Spacing();
-    if (ImGui::Button("  Back to Home")) {
-        state.currentPage = AppState::Page::HOME;
-    }
+    ImGui::EndChild();
 }
 
 

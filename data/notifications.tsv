@@ -21,4 +21,12 @@
 21	1	ORDER_COMPLETED	3	1	Order #3 for 'one piece vol1' marked COMPLETED by 'user1'.
 22	1	ORDER_PLACED	5	1	New order #5: 1x 'one piece vol1' from 'user1'.
 23	2	ORDER_ACCEPTED	5	1	Your order #5 for 'one piece vol1' was ACCEPTED by 'user2'.
-24	1	ORDER_COMPLETED	5	0	Order #5 for 'one piece vol1' marked COMPLETED by 'user1'.
+24	1	ORDER_COMPLETED	5	1	Order #5 for 'one piece vol1' marked COMPLETED by 'user1'.
+25	1	ORDER_PLACED	6	1	New order #6: 1x 'one piece vol1' from 'user1'.
+26	1	ORDER_PLACED	7	1	New order #7: 1x 'one piece vol2' from 'user1'.
+27	1	ORDER_PLACED	8	1	New order #8: 2x 'one piece vol2' from 'user1'.
+28	2	ORDER_ACCEPTED	6	1	Your order #6 for 'one piece vol1' was ACCEPTED by 'user2'.
+29	2	ORDER_ACCEPTED	7	1	Your order #7 for 'one piece vol2' was ACCEPTED by 'user2'.
+30	2	ORDER_REJECTED	8	1	Your order #8 for 'one piece vol2' was REJECTED by 'user2'.
+31	1	ORDER_COMPLETED	6	0	Order #6 for 'one piece vol1' marked COMPLETED by 'user1'.
+32	1	ORDER_COMPLETED	7	0	Order #7 for 'one piece vol2' marked COMPLETED by 'user1'.
