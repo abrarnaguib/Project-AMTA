@@ -52,15 +52,20 @@ void Dealer::SetLocation(const std::string &loc)
 }
 
 // Getters
-float Dealer::GetRating() const
-{
-    if (m_reviews.empty())
-        return 0.0f;
-    float sum = 0;
-    for (const auto &r : m_reviews)
-        sum += r.rating;
-    return sum / static_cast<float>(m_reviews.size());
+float Dealer::GetRating() const {
+    if (m_products.empty()) return 0.0f;
+    float total = 0.0f;
+    int count = 0;
+    for (const auto& p : m_products) {
+        for (const auto& r : p.GetReviews()) {
+            total += r.rating;
+            count++;
+        }
+    }
+    if (count == 0) return 0.0f;
+    return total / static_cast<float>(count);
 }
+
 
 // Product Management
 void Dealer::AddProduct(const Product &product)

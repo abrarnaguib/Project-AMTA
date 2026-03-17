@@ -22,6 +22,9 @@ std::string Database::OrdersFile() const {
 std::string Database::NotificationsFile() const {
      return m_dataDir + "/notifications.tsv"; 
 }
+std::string Database::ReviewsFile() const {
+    return m_dataDir + "/reviews.tsv";
+}
 
 
 void Database::EnsureDataDir() const {
@@ -63,6 +66,7 @@ void Database::LoadAll() {
     catch (...) {
 
     }
+    try { LoadReviews(); } catch (...) {}
 }
 
 // saves back in .tsv format
@@ -72,6 +76,7 @@ void Database::SaveAll() const {
     SaveProducts();
     SaveOrders();
     SaveNotifications();
+    SaveReviews();
 }
 
 // reads from the .tsv file format
@@ -218,6 +223,29 @@ void Database::LoadNotifications() {
     }
 }
 
+// reads reviews.tsv on startup and loads all reviews into memory
+void Database::LoadReviews() {
+    std::ifstream f(ReviewsFile());
+    if (!f) return;
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty()) continue;
+        // format: productId \t reviewerId|rating|comment
+        std::istringstream iss(line);
+        std::string tok;
+        std::getline(iss, tok, '\t');
+        int productId = std::stoi(tok);
+        std::string reviewLine;
+        std::getline(iss, reviewLine);
+        Product* p = FindProduct(productId);
+        if (p) {
+            try {
+                p->AddReview(Review::Deserialize(reviewLine));
+            } catch (...) {}
+        }
+    }
+}
+
 // converts objects and write to the tsv file
 // writes all in-memory users to users.tsv
 void Database::SaveUsers() const {
@@ -257,6 +285,17 @@ void Database::SaveNotifications() const {
     if (!f) throw DatabaseException("Cannot open notifications file for writing.");
     for (const auto& n : m_notifications) {
         f << n.Serialize() << "\n";
+    }
+}
+
+// writes all in-memory reviews to reviews.tsv
+void Database::SaveReviews() const {
+    std::ofstream f(ReviewsFile());
+    if (!f) throw DatabaseException("Cannot open reviews file for writing.");
+    for (const auto& p : m_products) {
+        for (const auto& r : p.GetReviews()) {
+            f << p.GetProductId() << "\t" << r.Serialize() << "\n";
+        }
     }
 }
 
@@ -507,3 +546,41 @@ Notification* Database::SendMessage(int recipientId, const std::string& msg) {
     SaveNotifications();
     return n;
 }
+
+// --- Review ---
+void Database::SubmitReview(int retailerId, int orderId, int productId, int rating, const std::string& comment) {
+    // Verify the order exists, belongs to this retailer, and is completed
+    Order* o = FindOrder(orderId);
+    if (!o) throw OrderException("Order not found.");
+    if (o->GetRetailerId() != retailerId) throw AuthException("Not your order.");
+    if (o->GetStatus() != OrderStatus::COMPLETED) throw OrderException("Can only review completed orders.");
+
+    // Verify retailer hasn't already reviewed this order
+    Retailer* r = GetRetailer(retailerId);
+    if (!r) throw DatabaseException("Retailer not found.");
+    if (!r->CanReviewOrder(orderId)) throw ValidationException("You have already reviewed this order.");
+
+    // Add review to the product in global list
+    Product* p = FindProduct(productId);
+    if (!p) throw ProductException("Product not found.");
+
+    Review rev;
+    rev.reviewerId = retailerId;
+    rev.rating = rating;
+    rev.comment = comment;
+    p->AddReview(rev);
+
+    // Mark the order as reviewed in retailer's record
+    r->MarkOrderReviewed(orderId);
+
+    // Update dealer's product copy too
+    Dealer* d = GetDealer(o->GetDealerId());
+    if (d) {
+        Product* dp = d->FindProduct(productId);
+        if (dp) dp->AddReview(rev);
+    }
+
+    SaveReviews();
+    SaveUsers(); // retailer's reviewed list updated
+}
+

@@ -750,19 +750,30 @@ static void RenderRetailerPanel(App &app) {
         return;
     }
 
+    // Review modal state (static so it persists across frames)
+    static int reviewOrderId   = -1;
+    static int reviewProductId = -1;
+    static int reviewRating    = 5;
+    static char reviewComment[256] = "";
+    static bool openReviewModal = false;
+
+    // Order history cards
+    // Use auto-height (0) so the card can expand for the Complete button row
     for (const auto& o : r->GetOrderHistory()) {
         ImGui::PushID(o.GetOrderId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
         ImGui::BeginChild("##orderhist", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
         ImVec4 oStatus = OrderColour(o.GetStatus());
+
+        ImGui::Spacing();
         ImGui::Text("   Order #%d   |   Product ID: %d   |   Qty: %d", o.GetOrderId(), o.GetProductId(), o.GetQuantity());
         ImGui::SameLine(500);
         ImGui::TextColored(oStatus, "[%s]", o.GetStatusStr().c_str());
         ImGui::Spacing();
 
         if (o.GetStatus() == OrderStatus::ACCEPTED) {
-            ImGui::TextColored(oStatus, "Order Accepted. Please press the  ");
+            ImGui::TextColored(oStatus, "   Order Accepted. Please press the  ");
             ImGui::SameLine();
             PushAccentButton();
             if (ImGui::SmallButton("  Complete  ")) {
@@ -773,19 +784,99 @@ static void RenderRetailerPanel(App &app) {
             ImGui::TextColored(oStatus, "  button to receive the order");
         }
         else if (o.GetStatus() == OrderStatus::PENDING) {
-            ImGui::TextColored(oStatus, "Order Pending for Dealer's Approval");
+            ImGui::TextColored(oStatus, "   Order Pending for Dealer's Approval");
         }
         else if (o.GetStatus() == OrderStatus::REJECTED) {
-            ImGui::TextColored(oStatus, "Order Rejected");
+            ImGui::TextColored(oStatus, "   Order Rejected");
         }
         else {
-            ImGui::TextColored(oStatus, "Order Received");
+            // COMPLETED branch — check whether this order has already been reviewed
+            bool alreadyReviewed = !r->CanReviewOrder(o.GetOrderId());
+            if (alreadyReviewed) {
+                ImGui::TextColored(COL_MUTED, "   Order Received  |  ✓ Review Submitted");
+            }
+            else {
+                ImGui::TextColored(oStatus, "   Order Received  ");
+                ImGui::SameLine();
+                PushWarnButton();
+                if (ImGui::SmallButton("  Leave Review  ")) {
+                    reviewOrderId = o.GetOrderId();
+                    reviewProductId = o.GetProductId();
+                    reviewRating = 5;
+                    reviewComment[0] = '\0';
+                    openReviewModal = true;
+                }
+                ImGui::PopStyleColor(3);
+            }
         }
 
+        ImGui::Spacing();
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::Spacing();
         ImGui::PopID();
+    }
+
+    // Trigger the popup (must be called outside the child loop)
+    if (openReviewModal) {
+        ImGui::OpenPopup("Leave a Review##modal");
+        openReviewModal = false;
+    }
+
+    // Review modal popup
+    ImGui::SetNextWindowSize({460, 0}, ImGuiCond_Always); // fixed width, auto height
+    if (ImGui::BeginPopupModal("Leave a Review##modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+        SectionLabel(COL_ACCENT, "Rate this product");
+
+        // Star rating slider
+        ImGui::Text("Rating  (1 – 5)");
+        ImGui::SameLine();
+        ImGui::TextColored(COL_MUTED, "— optional");
+        ImGui::PushItemWidth(220);
+        ImGui::SliderInt("##rev_rating", &reviewRating, 1, 5);
+        ImGui::PopItemWidth();
+
+        // Visual star row next to the slider
+        ImGui::SameLine();
+        std::string stars;
+        for (int i = 1; i <= 5; i++) {
+              stars += (i <= reviewRating ? "★" : "☆");
+        }
+        ImVec4 starCol = (reviewRating >= 4) ? COL_SUCCESS : (reviewRating >= 3 ? COL_WARN : COL_DANGER);
+        ImGui::TextColored(starCol, "%s", stars.c_str());
+
+        ImGui::Spacing();
+
+        // Comment box
+        ImGui::Text("Comment");
+        ImGui::SameLine();
+        ImGui::TextColored(COL_MUTED, "— optional");
+        ImGui::InputTextMultiline("##rev_comment", reviewComment, sizeof(reviewComment), {440, 80});
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Submit
+        PushSuccessButton();
+        if (ImGui::Button("  Submit Review  ", {140, 32})) {
+            app.SubmitReview(reviewOrderId, reviewProductId, reviewRating, std::string(reviewComment));
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine();
+
+        // Skip — closes without submitting, does NOT mark as reviewed
+        PushDangerButton();
+        if (ImGui::Button("  Skip  ", {100, 32})) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::PopStyleColor(3);
+
+        ImGui::Spacing();
+        ImGui::EndPopup();
     }
 }
 
@@ -836,7 +927,7 @@ static void RenderProductList (App &app) {
 
     int shown = 0;
     for (const auto &p : app.GetDatabase().GetAllProducts()) {
-        // apply filters
+        // apply filters — show product if filter matches name OR category (fixed from original &&)
         if (!filter.empty()) {
             std::string nameLower = p.GetName();
             std::string catLower = p.GetCategory();
@@ -844,29 +935,52 @@ static void RenderProductList (App &app) {
             for (char &c : nameLower) c = (char)tolower(c);
             for (char &c : catLower) c = (char)tolower(c);
             for (char &c : fLower) c = (char)tolower(c);
-            if (nameLower.find(fLower) != std::string::npos && catLower.find(fLower) != std::string::npos) continue;
+            // skip if filter doesn't match either name or category
+            if (nameLower.find(fLower) == std::string::npos &&
+                catLower.find(fLower) == std::string::npos) continue;
         }
         if (p.GetPrice() < minPrice || p.GetPrice() > maxPrice) continue;
+
         shown++;
+        const auto& reviews = p.GetReviews();
+        bool hasReviews = !reviews.empty();
+
         ImGui::PushID(p.GetProductId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
-        ImGui::BeginChild("##plist", {0, 0}, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
 
-        ImGui::TextColored(COL_ACCENT, "[%d] %s", p.GetProductId(), p.GetName().c_str());
+        // Use auto-height when there are reviews to display, fixed height otherwise
+        float cardH = hasReviews ? 0.0f : 75.0f;
+        ImGui::BeginChild("##plist", {0, cardH}, ImGuiChildFlags_Borders | (hasReviews ? ImGuiChildFlags_AutoResizeY : 0));
+
+        // Product header row
+        ImGui::Spacing();
+        ImGui::TextColored(COL_ACCENT, "  [%d] %s", p.GetProductId(), p.GetName().c_str());
         ImGui::SameLine(500);
 
-        //star rating display
+        // Star rating summary
         float avg = p.GetAvgRating();
         ImVec4 rCol;
-        if (avg >= 4.0f) rCol = COL_SUCCESS;
-        else if (avg >= 2.5f) rCol = COL_WARN;
-        else rCol = COL_DANGER;
+        if (avg >= 4.0f) {
+          rCol = COL_SUCCESS;
+        }
+        else if (avg >= 2.5f) {
+          rCol = COL_WARN;
+        }
+        else {
+          rCol = COL_DANGER;
+        }
 
-        if (avg) ImGui::TextColored(rCol, "★ %.1f", avg);
-        else ImGui::TextColored(COL_MUTED, "No reviews yet");
+        if (hasReviews) {
+            ImGui::TextColored(rCol, "★ %.1f  (%d review%s)", avg, (int)reviews.size(), reviews.size() == 1 ? "" : "s");
+        }
+        else {
+            ImGui::TextColored(COL_MUTED, "No reviews yet");
+        }
 
-        ImGui::Text("   Category: %-20s   Price: %.2f BDT   Stock: %d", p.GetCategory().c_str(), p.GetPrice(), p.GetStock());
+        ImGui::Text("   Category: %-20s   Price: %.2f BDT   Stock: %d",
+                    p.GetCategory().c_str(), p.GetPrice(), p.GetStock());
 
+        // Order button / out-of-stock / login nudge
         if (isRetailer) {
             ImGui::Spacing();
             if (p.GetStock() > 0) {
@@ -886,6 +1000,38 @@ static void RenderProductList (App &app) {
             ImGui::TextColored(COL_MUTED, "  Login as a retailer to place orders");
         }
 
+        // Review list (collapsible)
+        if (hasReviews) {
+            ImGui::Spacing();
+            // Indent the tree node slightly
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
+            std::string treeLabel = "  Reviews (" + std::to_string(reviews.size()) + ")##tree" + std::to_string(p.GetProductId());
+            if (ImGui::TreeNode(treeLabel.c_str())) {
+                ImGui::Spacing();
+                for (const auto& rev : reviews) {
+                    // Build star string for this review
+                    std::string revStars;
+                    for (int i = 1; i <= 5; i++) {
+                        revStars += (i <= rev.rating ? "★" : "☆");
+                    }
+                    ImVec4 revStarCol = (rev.rating >= 4) ? COL_SUCCESS : (rev.rating >= 3 ? COL_WARN : COL_DANGER);
+
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+                    ImGui::TextColored(revStarCol, "%s", revStars.c_str());
+
+                    if (!rev.comment.empty()) {
+                        ImGui::SameLine();
+                        ImGui::TextColored(COL_MUTED, "—");
+                        ImGui::SameLine();
+                        ImGui::TextWrapped("%s", rev.comment.c_str());
+                    }
+                }
+                ImGui::Spacing();
+                ImGui::TreePop();
+            }
+        }
+
+        ImGui::Spacing();
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::Spacing();
@@ -948,7 +1094,7 @@ static void RenderNotifications (App &app) {
         ImGui::TextColored(badgeCol, "[%s]", NotificationTypeToString(n->GetType()).c_str());
         ImGui::SameLine();
 
-        // Unread dot
+        // Unread dot (shows '?' currently; have to fix)
         if (!n->IsRead()) {
             ImGui::TextColored(COL_WARN, "● ");
         }
