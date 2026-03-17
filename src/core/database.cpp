@@ -22,6 +22,9 @@ std::string Database::OrdersFile() const {
 std::string Database::NotificationsFile() const {
      return m_dataDir + "/notifications.tsv"; 
 }
+std::string Database::ReviewsFile() const {
+    return m_dataDir + "/reviews.tsv";
+}
 
 
 void Database::EnsureDataDir() const {
@@ -188,7 +191,7 @@ void Database::LoadOrders() {
     for (const auto& o : m_orders) {
         Dealer* d = GetDealer(o.GetDealerId());
         Retailer* r = GetRetailer(o.GetRetailerId());
-        if (d && o.GetStatus() != OrderStatus::COMPLETED) {
+        if (d && (o.GetStatus() != OrderStatus::COMPLETED && o.GetStatus() != OrderStatus::REJECTED)) {
             d->AddIncomingOrder(o);
         }
         if (r) {
@@ -216,6 +219,29 @@ void Database::LoadNotifications() {
     for (const auto& n : m_notifications) {
         if (n.GetNotificationId() >= m_nextNotificationId) {
             m_nextNotificationId = n.GetNotificationId() + 1;
+        }
+    }
+}
+
+// reads reviews.tsv on startup and loads all reviews into memory
+void Database::LoadReviews() {
+    std::ifstream f(ReviewsFile());
+    if (!f) return;
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty()) continue;
+        // format: productId \t reviewerId|rating|comment
+        std::istringstream iss(line);
+        std::string tok;
+        std::getline(iss, tok, '\t');
+        int productId = std::stoi(tok);
+        std::string reviewLine;
+        std::getline(iss, reviewLine);
+        Product* p = FindProduct(productId);
+        if (p) {
+            try {
+                p->AddReview(Review::Deserialize(reviewLine));
+            } catch (...) {}
         }
     }
 }
@@ -259,6 +285,17 @@ void Database::SaveNotifications() const {
     if (!f) throw DatabaseException("Cannot open notifications file for writing.");
     for (const auto& n : m_notifications) {
         f << n.Serialize() << "\n";
+    }
+}
+
+// writes all in-memory reviews to reviews.tsv
+void Database::SaveReviews() const {
+    std::ofstream f(ReviewsFile());
+    if (!f) throw DatabaseException("Cannot open reviews file for writing.");
+    for (const auto& p : m_products) {
+        for (const auto& r : p.GetReviews()) {
+            f << p.GetProductId() << "\t" << r.Serialize() << "\n";
+        }
     }
 }
 
@@ -483,44 +520,34 @@ void Database::MarkNotificationRead(int notificationId) {
     throw NotificationException("Notification ID " + std::to_string(notificationId) + " not found.\n");
 }
 
-//For review feature
 
-std::string Database::ReviewsFile() const {
-    return m_dataDir + "/reviews.tsv";
-}
-
-void Database::LoadReviews() {
-    std::ifstream f(ReviewsFile());
-    if (!f) return;
-    std::string line;
-    while (std::getline(f, line)) {
-        if (line.empty()) continue;
-        // format: productId \t reviewerId|rating|comment
-        std::istringstream iss(line);
-        std::string tok;
-        std::getline(iss, tok, '\t');
-        int productId = std::stoi(tok);
-        std::string reviewLine;
-        std::getline(iss, reviewLine);
-        Product* p = FindProduct(productId);
-        if (p) {
-            try {
-                p->AddReview(Review::Deserialize(reviewLine));
-            } catch (...) {}
+// returns pointers to notifications for a specific user, newest first
+std::vector<const Notification*> Database::GetNotificationsForUser(int userId) const {
+    std::vector<const Notification*> result;
+    for (const auto& n : m_notifications) {
+        if (n.GetRecipientUserId() == userId) {
+            result.push_back(&n);
         }
     }
+    // reverse so newest comes first
+    std::reverse(result.begin(), result.end());
+    return result;
 }
 
-void Database::SaveReviews() const {
-    std::ofstream f(ReviewsFile());
-    if (!f) throw DatabaseException("Cannot open reviews file for writing.");
-    for (const auto& p : m_products) {
-        for (const auto& r : p.GetReviews()) {
-            f << p.GetProductId() << "\t" << r.Serialize() << "\n";
-        }
+
+// sends a plain message notification (no order attached) for future messaging feature
+Notification* Database::SendMessage(int recipientId, const std::string& msg) {
+    if (!FindUserById(recipientId)) {
+        throw DatabaseException("Recipient user ID " + std::to_string(recipientId) + " not found.\n");
     }
+    // orderId = -1 signals no associated order
+    m_notifications.emplace_back(m_nextNotificationId++, recipientId, NotificationType::MESSAGE, -1, msg);
+    Notification* n = &m_notifications.back();
+    SaveNotifications();
+    return n;
 }
 
+// --- Review ---
 void Database::SubmitReview(int retailerId, int orderId, int productId, int rating, const std::string& comment) {
     // Verify the order exists, belongs to this retailer, and is completed
     Order* o = FindOrder(orderId);

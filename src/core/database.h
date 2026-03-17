@@ -58,8 +58,10 @@ public:
 
     // notification related operations
     Notification* AddNotification(int recipientId, NotificationType type, int orderId, const std::string& msg);
+    Notification* SendMessage(int recipientId, const std::string& msg);  // for future messaging
     void MarkNotificationRead(int notificationId);
     const std::vector<Notification>& GetAllNotifications() const { return m_notifications; }
+    std::vector<const Notification*> GetNotificationsForUser(int userId) const; // filtered + newest first
 
     // in the public section, under "product related operations"
     void SubmitReview(int retailerId, int orderId, int productId, int rating, const std::string& comment);
