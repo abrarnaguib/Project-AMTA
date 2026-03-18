@@ -18,7 +18,7 @@ struct AppState
         REGISTER,
         DASHBOARD,
         PRODUCT_LIST,
-        PLACE_ORDER,
+        PLACE_ORDER
     };
     Page currentPage = Page::HOME;
 
