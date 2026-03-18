@@ -53,7 +53,7 @@ public:
     // splits text into lowercase alphanumeric tokens
     static std::vector<std::string> Tokenize(const std::string &text);
 
-    private:
+private:
     std::map<std::string, std::vector<int>> m_index;
     static const std::vector<int> s_empty;
 };
