@@ -1,76 +1,72 @@
 #pragma once
-#include "dealer.h"
+#include "product.h" 
 #include <string>
 #include <vector>
 #include <map>
-#include <set>
-#include <functional>
-
-struct SearchResult {
-    int productId;
-    int dealerId;
-    std::string productName;
-    std::string category;
-    double price;
-    int stock;
-    float avgRating;
-    float dealerRating;
-    std::string dealerUsername;
-    std::string companyName;
-    std::string location;
-    double score;
-    
-    static SearchResult From(const Product &p, const Dealer &d);
-};
+#include <unordered_map>
+#include <stdexcept>
 
 struct SearchFilters {
-    double minPrice = 0.8;
-    double maxPrice = 1e18;
-    float minProductRating = 0.0f;
-    float minDealerRating = 0.0f;
-    std::string category = "";
-    bool inStockOnly = false;
+    double minPrice = 0.0;
+    double maxPrice = 1e9;
+    float minRating = 0.0f;
+};
+struct SearchResult {
+    const Product *product = nullptr;
+    int matchScore = 0;
+    float avgRating = 0.0f;
+};
 
-    enum class SortBy {
-        RELEVANCE,
-        PRICE_ASC,
-        PRICE_DESC,
-        RATING_DESC,
-        DEALER_RATING_DESC
-    };
-    SortBy sortBy = SortBy::RELEVANCE;
+// exception class for search related errors
+class SearchException: public std::runtime_error {
+public:
+    explicit SearchException(const std::string &msg): std::runtime_error(msg) {
+
+    }
+};
+
+// throws error when Search() is called before Rebuild()
+class SearchNotBuiltException: public SearchException {
+public:
+    SearchNotBuiltException(): SearchException("SearchEngine::Search() called before Rebuild(). Call Rebuild(products) at startup and after every catalogue change.") {
+
+    }
+};
+
+// throws error when SearchFilters value is logically incorrect
+class SearchFilterException: public SearchException {
+public:
+    explicit SearchFilterException(const std::string &msg): SearchException("Invalid search filter: " + msg) {
+
+    }
 };
 
 class InvertedIndex {
 public:
-    void Build(const std::vector<Product> &products, const std::function<const Dealer *(int)> &dealerLookup);
-    void Clear() {
-        m_index.clear();
-    }
-    std::set<int> Lookup(const std::vector<std::string> &tokens) const;
-    std::set<int> LookupAll(const std::vector<std::string> &tokens) const;
-    int MatchCount(int productId, const std::vector<std::string> &tokens) const;
-    static std::vector<std::string> Tokenize(const std::string &text);
-private:
-    std::map<std::string, std::set<int>> m_index;
+
+    // clears and rebuilds the index from the given product catalogus
+    void Build(const std::vector<Product> &products);
     
-    static std::string Normalize(const std::string &word);
-    void IndexProduct(const Product &p, const std::string &extraText);
+    // returns the product ID whose name or category contains this token 
+    const std::vector<int> &Lookup(const std::string &token) const;
+
+    // splits text into lowercase alphanumeric tokens
+    static std::vector<std::string> Tokenize(const std::string &text);
+
+    private:
+    std::map<std::string, std::vector<int>> m_index;
+    static const std::vector<int> s_empty;
 };
 
 class SearchEngine {
 public:
-    SearchEngine() = default;
     
-    void Rebuild(const std::vector<Product> &products, const std::function<const Dealer *(int)> &dealerLookup);
-
-    std::vector<SearchResult> Search(const std::string &query, const SearchFilters &filters, const std::function<const Product *(int)> &productLookup, const std::function<const Dealer *(int)> &dealerLookup) const;
-    std::vector<std::string> GetCategories() const {
-        return m_categories;
-    }
+    // rebuilds the InvertedIndex
+    void Rebuild(const std::vector<Product> &products);
+    
+    // returns ranked list of SearchResults
+    std::vector<SearchResult> Search(const std::string &query, const SearchFilters &filters, const std::vector<Product> &products) const;
 private:
     InvertedIndex m_index;
-    std::vector<int> m_allProductIds;
-    std::vector<std::string> m_categories;
-    std::vector<SearchResult> ApplyFiltersAndSort(const std::set<int> &candidates, const std::vector<std::string> &tokens, const SearchFilters &filters, const std::function<const Product *(int)> &productLookup, const std::function<const Dealer *(int)> &dealerLookup) const;
+    bool m_isBuilt = false;
 };
