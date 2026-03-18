@@ -58,7 +58,7 @@ float Dealer::GetRating() const {
     int count = 0;
     for (const auto& p : m_products) {
         for (const auto& r : p.GetReviews()) {
-            total += r.rating;
+            total += r.GetRating();
             count++;
         }
     }
@@ -126,12 +126,7 @@ void Dealer::RespondToOrder(int orderId, OrderStatus status)
 // Review Management
 void Dealer::AddReview(int reviewerId, int rating, const std::string &comment)
 {
-    if (rating < 1 || rating > 5)
-        throw ValidationException("Rating must be between 1 and 5.");
-    Review r;
-    r.reviewerId = reviewerId;
-    r.rating = rating;
-    r.comment = comment;
+    Review r(-1, reviewerId, comment, rating);
     m_reviews.push_back(r);
 }
 

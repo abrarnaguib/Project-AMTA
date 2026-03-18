@@ -1,4 +1,5 @@
 #pragma once
+#include"review.h"
 #include <string>
 #include <stdexcept>
 
@@ -22,6 +23,8 @@ private:
     int m_productId;
     int m_quantity;
     OrderStatus m_status;
+    bool m_isReviewed;   // persisted via reviews.tsv, not orders.tsv
+    Review m_review;
 
     // Constraint Helpers
     static void ValidateQuantity(int qty);
@@ -55,6 +58,20 @@ public:
     }
     std::string GetStatusStr() const { 
         return OrderStatusToString(m_status); 
+    }
+    bool IsReviewed() const { 
+        return m_isReviewed; 
+    }
+    Review GetReview() const { 
+        return m_review; 
+    }
+
+    // Setters
+    void SetReviewed(bool val) { 
+        m_isReviewed = val; 
+    }
+    void SetReview(Review r) { 
+        m_review = r; 
     }
 
     // Helper for database (.tsv file based)

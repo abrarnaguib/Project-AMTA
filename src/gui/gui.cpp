@@ -1012,18 +1012,18 @@ static void RenderProductList (App &app) {
                     // Build star string for this review
                     std::string revStars;
                     for (int i = 1; i <= 5; i++) {
-                        revStars += (i <= rev.rating ? "★" : "☆");
+                        revStars += (i <= rev.GetRating() ? "★" : "☆");
                     }
-                    ImVec4 revStarCol = (rev.rating >= 4) ? COL_SUCCESS : (rev.rating >= 3 ? COL_WARN : COL_DANGER);
+                    ImVec4 revStarCol = (rev.GetRating() >= 4) ? COL_SUCCESS : (rev.GetRating() >= 3 ? COL_WARN : COL_DANGER);
 
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
                     ImGui::TextColored(revStarCol, "%s", revStars.c_str());
 
-                    if (!rev.comment.empty()) {
+                    if (!rev.GetComment().empty()) {
                         ImGui::SameLine();
                         ImGui::TextColored(COL_MUTED, "—");
                         ImGui::SameLine();
-                        ImGui::TextWrapped("%s", rev.comment.c_str());
+                        ImGui::TextWrapped("%s", rev.GetComment().c_str());
                     }
                 }
                 ImGui::Spacing();

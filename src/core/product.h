@@ -1,17 +1,11 @@
 #pragma once
+#include "review.h"
 #include <string>
 #include <vector>
 #include <stdexcept>
 
 
-struct Review {
-    int reviewerId;
-    std::string comment;
-    int rating;
 
-    std::string Serialize() const;
-    static Review Deserialize(const std::string& line);
-};
 
 
 class Product {
@@ -55,19 +49,19 @@ public:
     // Setters
     void SetName(const std::string& name);
     void SetCategory(const std::string& category);
-    void SetPrice(double price);
-    void SetStock(int stock);
+    void SetPrice(const double price);
+    void SetStock(const int stock);
 
     // Stock Management
-    void UpdateStock(int delta);
-    void DeductStock(int quantity);
+    void UpdateStock(const int delta);
+    void DeductStock(const int quantity);
 
     // Review Management
     void AddReview(const Review& review);
     const std::vector<Review>& GetReviews() const { return m_reviews; }
 
     // Helper for database (.tsv file based)
-    std::string Serialize()   const;
+    std::string Serialize() const;
     static Product Deserialize(const std::string& line);
 
     // Debugging Helper
