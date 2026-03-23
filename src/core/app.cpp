@@ -6,6 +6,9 @@ App::App() : m_db("../../data")
     try
     {
         m_db.LoadAll();
+
+        // updated
+        m_search.Rebuild(m_db.GetAllProducts());
     }
     catch (const std::exception &e)
     {
@@ -89,6 +92,15 @@ bool App::AddProduct(const std::string &name, const std::string &category,
     try
     {
         m_db.AddProduct(m_state.currentUser->GetUserId(), name, category, price, stock);
+       
+        // updated
+        try {
+            m_search.Rebuild(m_db.GetAllProducts());
+        }
+        catch (const SearchException &e) {
+            std::cerr << "[App] Search index rebuild failed afted AddProduct: " << e.what() << '\n';
+        }
+
         m_state.infoMessage = "Product '" + name + "' added.";
         return true;
     }
@@ -105,6 +117,15 @@ bool App::DeleteProduct(int productId)
     try
     {
         m_db.DeleteProduct(productId);
+
+        // updated
+        try {
+            m_search.Rebuild(m_db.GetAllProducts());
+        }
+        catch (const SearchException &e) {
+            std::cerr << "[App] Search index rebuild failed after DeleteProduct: " << e.what() << '\n';
+        }
+        
         m_state.infoMessage = "Product deleted.";
         return true;
     }
