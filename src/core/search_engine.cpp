@@ -3,8 +3,10 @@
 #include <cctype>
 #include <unordered_map>
 
+// s_empty is a static member defined in the InvertedIndex
 const std::vector<int> InvertedIndex::s_empty;
 
+// splits string into alphanumeric words, considers non-alphanumeric characters as delimiters
 std::vector<std::string> InvertedIndex::Tokenize(const std::string &text) {
     std::vector<std::string> tokens;
     std::string current;
@@ -24,12 +26,17 @@ std::vector<std::string> InvertedIndex::Tokenize(const std::string &text) {
     }
     return tokens;
 }
+
 void InvertedIndex::Build(const std::vector<Product> &products) {
+    
+    // validates all product ids are valid
     for (const auto &p: products) {
         if (p.GetProductId() <= 0) {
             throw SearchException("Cannot built search index: product " + p.GetName() + " has an invalid ID (" + std::to_string(p.GetProductId()) + "). All product IDs must be > 0.");
         }
     }
+
+    // builds the inverted index by mapping each token to the product ids that has that token
     m_index.clear();
     for (const auto &p: products) {
         int id = p.GetProductId();
@@ -46,6 +53,7 @@ void InvertedIndex::Build(const std::vector<Product> &products) {
     }
 }
 
+// looks up a token and return its product ids or empty vector if doesn't exist
 const std::vector<int> &InvertedIndex::Lookup(const std::string &token) const {
     auto it = m_index.find(token);
     if (it == m_index.end()) {
@@ -56,13 +64,17 @@ const std::vector<int> &InvertedIndex::Lookup(const std::string &token) const {
     }
 }
 
+// rebuilds the index and marks true if build is successful
 void SearchEngine::Rebuild(const std::vector<Product> &products) {
     m_isBuilt = false;
     m_index.Build(products);
     m_isBuilt = true;
 }
 
+// 
 std::vector<SearchResult> SearchEngine::Search (const std::string &query, const SearchFilters &filters, const std::vector<Product> &products) const {
+    
+    // the if statements ensures that the index must exist and the filters must be valid
     if (!m_isBuilt) {
         throw SearchNotBuiltException();
     }
@@ -79,6 +91,7 @@ std::vector<SearchResult> SearchEngine::Search (const std::string &query, const 
         throw SearchFilterException("minRating must be between 0 and 5 (got " + std::to_string(filters.minRating) + ").\n");
     }
 
+    // score every product using the inverted index
     std::unordered_map<int, int> scoreMap;
     const std::vector<std::string> queryTokens = InvertedIndex::Tokenize(query);
     const bool queryIsBlank = queryTokens.empty();
@@ -91,11 +104,14 @@ std::vector<SearchResult> SearchEngine::Search (const std::string &query, const 
         }
     }
     else {
+
+        // for blank query, seed all product with zero
         for (const auto &p: products) {
             scoreMap[p.GetProductId()] = 0;
         }
     }
 
+    // for every scored product, apply price and rating filters and then build a SearchResult
     std::unordered_map<int, const Product *> idMap;
     idMap.reserve(products.size());
     for (const auto &p: products) {
@@ -104,7 +120,7 @@ std::vector<SearchResult> SearchEngine::Search (const std::string &query, const 
 
     std::vector<SearchResult> results;
     results.reserve(scoreMap.size());
-    
+
     for (const auto &[id, score]: scoreMap) {
         if (!queryIsBlank and score == 0) {
             continue;
@@ -127,6 +143,7 @@ std::vector<SearchResult> SearchEngine::Search (const std::string &query, const 
         results.push_back({p, score, avg});
     }
     
+    // shows the most relevant product first, and if relevance is equal, then show the better rated ones
     std::sort(results.begin(), results.end(), [] (const SearchResult &a, const SearchResult &b) {
         if (a.matchScore != b.matchScore) {
             return a.matchScore > b.matchScore;
