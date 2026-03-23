@@ -3,6 +3,7 @@
 #include "notification.h"
 #include <string>
 #include <vector>
+#include "search_engine.h" // updated
 
 struct AppState
 {   
@@ -38,6 +39,8 @@ class App
 private:
     Database m_db;
     AppState m_state;
+    // updated
+    SearchEngine m_search;
 
 public:
     App();
@@ -67,6 +70,9 @@ public:
     bool SendMessage(int recipientId, const std::string &msg);   // for future messaging
     std::vector<const Notification*> GetNotificationsForUser() const; // for current logged-in user
     
+    // updated: Search actions
+    std::vector<SearchResult> SearchProducts (const std::string &query, const SearchFilters &filters) const;
+
     // Accessors
     AppState &GetState() { return m_state; }
     Database &GetDatabase() { return m_db; }
