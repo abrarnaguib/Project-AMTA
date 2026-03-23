@@ -371,6 +371,7 @@ bool App::SubmitReview(int orderId, int productId, int rating, const std::string
     }
 }
 
+// updated
 std::vector<SearchResult> App::SearchProducts(const std::string &query,const SearchFilters &filters) const {
     try {
         return m_search.Search(query, filters, m_db.GetAllProducts());
