@@ -370,3 +370,17 @@ bool App::SubmitReview(int orderId, int productId, int rating, const std::string
         return false;
     }
 }
+
+std::vector<SearchResult> App::SearchProducts(const std::string &query,const SearchFilters &filters) const {
+    try {
+        return m_search.Search(query, filters, m_db.GetAllProducts());
+    }
+    catch (const SearchNotBuiltException& e) {
+        std::cerr << "[App] " << e.what() << '\n';
+        return {};
+    }
+    catch (const SearchFilterException& e) {
+        std::cerr << "[App] " << e.what() << '\n';
+        return {};
+    }
+}
