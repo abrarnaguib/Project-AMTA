@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cctype>
 #include <unordered_map>
+#include <bits/stdc++.h>
+using namespace std;
 
 const std::vector<int> InvertedIndex::s_empty;
 
@@ -60,4 +62,78 @@ void SearchEngine::Rebuild(const std::vector<Product> &products) {
     m_isBuilt = false;
     m_index.Build(products);
     m_isBuilt = true;
+}
+
+std::vector<SearchResult> SearchEngine::Search (const std::string &query, const SearchFilters &filters, const std::vector<Product> &products) const {
+    if (!m_isBuilt) {
+        throw SearchNotBuiltException();
+    }
+    if (filters.minPrice < 0.0) {
+        throw SearchFilterException("minPrice cannot be negative (got " + std::to_string(filters.minPrice) + ").\n");
+    }
+    if (filters.maxPrice < 0.0) {
+        throw SearchFilterException("maxPrice cannot be negative (got " + std::to_string(filters.maxPrice) + ").\n");
+    }
+    if (filters.minPrice > filters.maxPrice) {
+        throw SearchFilterException("minPrice (" + std::to_string(filters.minPrice) + ") cannot exceed maxPrice (" + std::to_string(filters.maxPrice) + ").\n");
+    }
+    if (filters.minRating < 0.0f or filters.minRating > 5.0f) {
+        throw SearchFilterException("minRating must be between 0 and 5 (got " + std::to_string(filters.minRating) + ").\n");
+    }
+
+    std::unordered_map<int, int> scoreMap;
+    const std::vector<std::string> queryTokens = InvertedIndex::Tokenize(query);
+    const bool queryIsBlank = queryTokens.empty();
+
+    if (!queryIsBlank) {
+        for (const auto &tok: queryTokens) {
+            for (int id: m_index.Lookup(tok)) {
+                ++scoreMap[id];
+            }
+        }
+    }
+    else {
+        for (const auto &p: products) {
+            scoreMap[p.GetProductId()] = 0;
+        }
+    }
+
+    std::unordered_map<int, const Product *> idMap;
+    idMap.reserve(products.size());
+    for (const auto &p: products) {
+        idMap[p.GetProductId()] = &p;
+    }
+
+    std::vector<SearchResult> results;
+    results.reserve(scoreMap.size());
+    
+    for (const auto &[id, score]: scoreMap) {
+        if (!queryIsBlank and score == 0) {
+            continue;
+        }
+        auto it = idMap.find(id);
+        if (it == idMap.end()) {
+            continue;
+        }
+
+        const Product *p = it->second;
+
+        if (p->GetPrice() < filters.minPrice or p->GetPrice() > filters.maxPrice) {
+            continue;
+        }
+        
+        float avg = p->GetAvgRating();
+        if (avg < filters.minRating) {
+            continue;
+        }
+        results.push_back({p, score, avg});
+    }
+    
+    std::sort(results.begin(), results.end(), [] (const SearchResult &a, const SearchResult &b) {
+        if (a.matchScore != b.matchScore) {
+            return a.matchScore > b.matchScore;
+        }
+        return a.avgRating > b.avgRating;
+    });
+    return results;
 }
