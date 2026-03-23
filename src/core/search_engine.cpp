@@ -2,8 +2,6 @@
 #include <algorithm>
 #include <cctype>
 #include <unordered_map>
-#include <bits/stdc++.h>
-using namespace std;
 
 const std::vector<int> InvertedIndex::s_empty;
 
