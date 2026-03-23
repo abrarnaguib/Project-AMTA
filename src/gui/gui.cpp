@@ -1,10 +1,10 @@
 #include "gui.h"
 #include "../core/app.h"
+#include "../core/search_engine.h" // updated
 #include "imgui.h"
 #include<string>
 #include<iostream>
 #include<math.h>
-
 
 
 // forward declaration for each and every page / panel
@@ -923,64 +923,50 @@ static void RenderProductList (App &app) {
     ImGui::Separator();
     ImGui::Spacing();
 
-    std::string filter(searchBuffer);
+    //updated
+    SearchFilters filters;
+    filters.minPrice = minPrice;
+    filters.maxPrice = maxPrice;
 
-    int shown = 0;
-    for (const auto &p : app.GetDatabase().GetAllProducts()) {
-        // apply filters — show product if filter matches name OR category (fixed from original &&)
-        if (!filter.empty()) {
-            std::string nameLower = p.GetName();
-            std::string catLower = p.GetCategory();
-            std::string fLower = filter;
-            for (char &c : nameLower) c = (char)tolower(c);
-            for (char &c : catLower) c = (char)tolower(c);
-            for (char &c : fLower) c = (char)tolower(c);
-            // skip if filter doesn't match either name or category
-            if (nameLower.find(fLower) == std::string::npos &&
-                catLower.find(fLower) == std::string::npos) continue;
-        }
-        if (p.GetPrice() < minPrice || p.GetPrice() > maxPrice) continue;
+    std::vector<SearchResult> results = app.SearchProducts(std::string(searchBuffer), filters);
 
-        shown++;
-        const auto& reviews = p.GetReviews();
+    int shown = (int)results.size();
+
+    for (const auto &sr : results) {
+        const Product &p = *sr.product;
+        const auto &reviews = p.GetReviews();
         bool hasReviews = !reviews.empty();
 
         ImGui::PushID(p.GetProductId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
 
-        // Use auto-height when there are reviews to display, fixed height otherwise
-        float cardH = hasReviews ? 0.0f : 75.0f;
+        float cardH;
+        if (hasReviews) {
+            cardH = 0.0f;
+        }
+        else {
+            cardH = 75.0f;
+        }
         ImGui::BeginChild("##plist", {0, cardH}, ImGuiChildFlags_Borders | (hasReviews ? ImGuiChildFlags_AutoResizeY : 0));
 
-        // Product header row
         ImGui::Spacing();
         ImGui::TextColored(COL_ACCENT, "  [%d] %s", p.GetProductId(), p.GetName().c_str());
         ImGui::SameLine(500);
 
-        // Star rating summary
-        float avg = p.GetAvgRating();
         ImVec4 rCol;
-        if (avg >= 4.0f) {
-          rCol = COL_SUCCESS;
-        }
-        else if (avg >= 2.5f) {
-          rCol = COL_WARN;
-        }
-        else {
-          rCol = COL_DANGER;
-        }
+        if (sr.avgRating >= 4.0f)      rCol = COL_SUCCESS;
+        else if (sr.avgRating >= 2.5f) rCol = COL_WARN;
+        else                           rCol = COL_DANGER;
 
         if (hasReviews) {
-            ImGui::TextColored(rCol, "★ %.1f  (%d review%s)", avg, (int)reviews.size(), reviews.size() == 1 ? "" : "s");
+            ImGui::TextColored(rCol, "★ %.1f  (%d review%s)", sr.avgRating, (int)reviews.size(), reviews.size() == 1 ? "" : "s");
         }
         else {
             ImGui::TextColored(COL_MUTED, "No reviews yet");
         }
 
-        ImGui::Text("   Category: %-20s   Price: %.2f BDT   Stock: %d",
-                    p.GetCategory().c_str(), p.GetPrice(), p.GetStock());
+        ImGui::Text("   Category: %-20s   Price: %.2f BDT   Stock: %d", p.GetCategory().c_str(), p.GetPrice(), p.GetStock());
 
-        // Order button / out-of-stock / login nudge
         if (isRetailer) {
             ImGui::Spacing();
             if (p.GetStock() > 0) {
@@ -1000,25 +986,19 @@ static void RenderProductList (App &app) {
             ImGui::TextColored(COL_MUTED, "  Login as a retailer to place orders");
         }
 
-        // Review list (collapsible)
         if (hasReviews) {
             ImGui::Spacing();
-            // Indent the tree node slightly
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
             std::string treeLabel = "  Reviews (" + std::to_string(reviews.size()) + ")##tree" + std::to_string(p.GetProductId());
             if (ImGui::TreeNode(treeLabel.c_str())) {
                 ImGui::Spacing();
                 for (const auto& rev : reviews) {
-                    // Build star string for this review
                     std::string revStars;
-                    for (int i = 1; i <= 5; i++) {
+                    for (int i = 1; i <= 5; i++)
                         revStars += (i <= rev.rating ? "★" : "☆");
-                    }
-                    ImVec4 revStarCol = (rev.rating >= 4) ? COL_SUCCESS : (rev.rating >= 3 ? COL_WARN : COL_DANGER);
-
+                    ImVec4 revStarCol = (rev.rating >= 4) ? COL_SUCCESS : (rev.rating >= 3   ? COL_WARN : COL_DANGER);
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
                     ImGui::TextColored(revStarCol, "%s", revStars.c_str());
-
                     if (!rev.comment.empty()) {
                         ImGui::SameLine();
                         ImGui::TextColored(COL_MUTED, "—");
@@ -1039,6 +1019,7 @@ static void RenderProductList (App &app) {
     }
 
     if (!shown) ImGui::TextColored(COL_MUTED, "  No products match your search.");
+
     ImGui::Spacing();
 
     if (ImGui::Button("  Back to Home  ")) {
