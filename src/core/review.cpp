@@ -32,8 +32,16 @@ void Review::SetRating(const int rating) {
 
 // Review Parsers for Database
 std::string Review::Serialize() const {
+
+    
+    std::string safeComment;
+    for (char c : m_comment) {
+        if (c == '\n')      safeComment += "\\n";
+        else if (c == '\r') safeComment += "\\r";
+        else                safeComment += c;
+    }
     std::ostringstream oss;
-    oss << m_orderId << "\t" << m_reviewerId << "\t" << m_rating << "\t" << m_comment;
+    oss << m_orderId << "\t" << m_reviewerId << "\t" << m_rating << "\t" << safeComment;
     return oss.str();
 }
 
@@ -48,9 +56,21 @@ Review Review::Deserialize(const std::string &line) {
     reviewerId = std::stoi(token);
     std::getline(iss, token, '\t');
     rating = std::stoi(token);
-    
+
+    std::string raw;
+    std::getline(iss, raw);
+
+
     std::string comment;
-    std::getline(iss, comment);
-    
+    for (size_t i = 0; i < raw.size(); ++i) {
+        if (raw[i] == '\\' && i + 1 < raw.size()) {
+            if (raw[i+1] == 'n')  { comment += '\n'; ++i; }
+            else if (raw[i+1] == 'r') { comment += '\r'; ++i; }
+            else comment += raw[i];
+        } else {
+            comment += raw[i];
+        }
+    }
+
     return Review(orderId, reviewerId, comment, rating);
 }
