@@ -72,7 +72,7 @@ void SearchEngine::Rebuild(const std::vector<Product> &products) {
 }
 
 // 
-std::vector<SearchResult> SearchEngine::Search (const std::string &query, const SearchFilters &filters, const std::vector<Product> &products) const {
+std::vector<SearchResult> SearchEngine::Search(const std::string &query, const SearchFilters &filters, const std::vector<Product> &products) const {
     
     // the if statements ensures that the index must exist and the filters must be valid
     if (!m_isBuilt) {

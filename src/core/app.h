@@ -1,9 +1,7 @@
 #pragma once
 #include "database.h"
-#include "notification.h"
 #include <string>
 #include <vector>
-#include "search_engine.h" // updated
 
 struct AppState
 {   
@@ -22,7 +20,7 @@ struct AppState
         PLACE_ORDER,
     };
     Page currentPage = Page::HOME;
-
+    
     // Feedback messages shown in GUI
     std::string infoMessage;
     std::string errorMessage;
@@ -39,9 +37,7 @@ class App
 private:
     Database m_db;
     AppState m_state;
-    // updated
-    SearchEngine m_search;
-
+    
 public:
     App();
 
