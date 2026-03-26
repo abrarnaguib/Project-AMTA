@@ -332,9 +332,10 @@ void Database::SaveReviews() const {
         }
         // find the one review that belongs to this order's retailer
         Review r = o.GetReview();
-        if (r.GetReviewerId() == o.GetRetailerId()) {
-            f << r.Serialize() << "\n";
+        if (r.GetReviewerId() != o.GetRetailerId()) {
+            throw ReviewException("Reviewer id and order's retailer id do not match.");
         }
+        f << r.Serialize() << "\n";
     }
 }
 

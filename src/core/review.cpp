@@ -36,9 +36,15 @@ std::string Review::Serialize() const {
     
     std::string safeComment;
     for (char c : m_comment) {
-        if (c == '\n')      safeComment += "\\n";
-        else if (c == '\r') safeComment += "\\r";
-        else                safeComment += c;
+        if (c == '\n') {
+            safeComment += "\\n";
+        }     
+        else if (c == '\r') {
+            safeComment += "\\r";
+        }
+        else {
+            safeComment += c;
+        }   
     }
     std::ostringstream oss;
     oss << m_orderId << "\t" << m_reviewerId << "\t" << m_rating << "\t" << safeComment;
@@ -67,7 +73,8 @@ Review Review::Deserialize(const std::string &line) {
             if (raw[i+1] == 'n')  { comment += '\n'; ++i; }
             else if (raw[i+1] == 'r') { comment += '\r'; ++i; }
             else comment += raw[i];
-        } else {
+        } 
+        else {
             comment += raw[i];
         }
     }
