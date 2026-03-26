@@ -50,4 +50,5 @@ public:
     // Reviews
     bool CanReviewOrder(int orderId) const;
     void MarkOrderReviewed(int orderId);
+    void ForceMarkReviewed(int orderId) { m_reviewedOrderIds.push_back(orderId); } // for loading only
 };
