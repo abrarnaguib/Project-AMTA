@@ -6,10 +6,12 @@
 #include "product.h"
 #include "order.h"
 #include "notification.h"
+#include "search_engine.h"
 #include <vector>
 #include <memory>
 #include <string>
 #include <stdexcept>
+
 
 // custom exception class
 class DatabaseException: public std::runtime_error {
@@ -63,6 +65,11 @@ public:
     const std::vector<Notification>& GetAllNotifications() const { return m_notifications; }
     std::vector<const Notification*> GetNotificationsForUser(int userId) const; // filtered + newest first
 
+    
+    // search related operations
+    void Rebuild();
+    std::vector<SearchResult> SearchProducts(const std::string &query, const SearchFilters &filters) const;
+
     // in the public section, under "product related operations"
     void SubmitReview(int retailerId, int orderId, int productId, int rating, const std::string& comment);
     std::string ReviewsFile() const;
@@ -77,6 +84,9 @@ private:
     std::vector<Product> m_products;
     std::vector<Order> m_orders;
     std::vector<Notification> m_notifications;
+    
+    // newly_updated
+    SearchEngine m_search;
 
     // tracks increments
     int m_nextUserId = 1;

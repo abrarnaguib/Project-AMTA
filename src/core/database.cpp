@@ -1,4 +1,5 @@
 #include "database.h"
+#include "search_engine.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -585,6 +586,14 @@ Notification* Database::SendMessage(int recipientId, const std::string& msg) {
     Notification* n = &m_notifications.back();
     SaveNotifications();
     return n;
+}
+
+// // Search
+void Database::Rebuild() {
+    m_search.Rebuild(m_products);
+}
+std::vector<SearchResult> Database::SearchProducts(const std::string &query, const SearchFilters &filters) const {
+    return m_search.Search(query, filters, m_products);
 }
 
 // --- Review ---

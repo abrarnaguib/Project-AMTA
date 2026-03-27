@@ -6,6 +6,9 @@ App::App() : m_db("../../data")
     try
     {
         m_db.LoadAll();
+
+        // newly_updated
+        m_db.Rebuild();
     }
     catch (const std::exception &e)
     {
@@ -89,6 +92,15 @@ bool App::AddProduct(const std::string &name, const std::string &category,
     try
     {
         m_db.AddProduct(m_state.currentUser->GetUserId(), name, category, price, stock);
+       
+        // newly_updated
+        try {
+            m_db.Rebuild();
+        }
+        catch (const SearchException &e) {
+            std::cerr << "[App] Search index rebuild failed afted AddProduct: " << e.what() << '\n';
+        }
+
         m_state.infoMessage = "Product '" + name + "' added.";
         return true;
     }
@@ -105,6 +117,15 @@ bool App::DeleteProduct(int productId)
     try
     {
         m_db.DeleteProduct(productId);
+
+        // newly_updated
+        try {
+            m_db.Rebuild();
+        }
+        catch (const SearchException &e) {
+            std::cerr << "[App] Search index rebuild failed after DeleteProduct: " << e.what() << '\n';
+        }
+        
         m_state.infoMessage = "Product deleted.";
         return true;
     }
@@ -348,5 +369,21 @@ bool App::SubmitReview(int orderId, int productId, int rating, const std::string
     } catch (const std::exception& e) {
         m_state.errorMessage = e.what();
         return false;
+    }
+}
+
+// newly_updated
+std::vector<SearchResult> App::SearchProducts(const std::string &query, const SearchFilters &filters) const {
+    try {
+        // newly_updated
+        return m_db.SearchProducts(query, filters);
+    }
+    catch (const SearchNotBuiltException& e) {
+        std::cerr << "[App] " << e.what() << '\n';
+        return {};
+    }
+    catch (const SearchFilterException& e) {
+        std::cerr << "[App] " << e.what() << '\n';
+        return {};
     }
 }
