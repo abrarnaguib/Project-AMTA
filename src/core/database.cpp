@@ -67,7 +67,18 @@ void Database::LoadAll() {
     catch (...) {
 
     }
-    try { LoadReviews(); } catch (...) {}
+    try { 
+        LoadReviews(); 
+    } 
+    catch (...) {
+
+    }
+    try {
+        SearchRebuild();
+    }
+    catch (const SearchException &e) {
+        std::cerr << "[App] Search index rebuild failed while loading for the first time: " << e.what() << '\n';
+    }
 }
 
 // saves back in .tsv format
@@ -434,6 +445,13 @@ Product* Database::AddProduct(int dealerId, const std::string &name, const std::
     Product* p = &m_products.back();
     d->AddProduct(*p);
     SaveAll();
+    // newly_updated
+    try {
+        SearchRebuild();
+    }
+    catch (const SearchException &e) {
+        std::cerr << "[App] Search index rebuild failed afted AddProduct: " << e.what() << '\n';
+    }
     return p;
 }
 // finds the product, deletes from both dealer's list as well as global list
@@ -450,6 +468,13 @@ void Database::DeleteProduct(int productId) {
     }
     m_products.erase(it);
     SaveAll();
+    // newly_updated
+    try {
+        SearchRebuild();
+    }
+    catch (const SearchException &e) {
+        std::cerr << "[App] Search index rebuild failed afted DeleteProduct: " << e.what() << '\n';
+    }
 }
 // looks for all product and returns the matching one
 Product* Database::FindProduct(int productId) const {
@@ -588,10 +613,11 @@ Notification* Database::SendMessage(int recipientId, const std::string& msg) {
     return n;
 }
 
-// // Search
-void Database::Rebuild() {
+// --- Search ---
+void Database::SearchRebuild() {
     m_search.Rebuild(m_products);
 }
+
 std::vector<SearchResult> Database::SearchProducts(const std::string &query, const SearchFilters &filters) const {
     return m_search.Search(query, filters, m_products);
 }

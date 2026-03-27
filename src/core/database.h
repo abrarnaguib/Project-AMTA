@@ -67,7 +67,7 @@ public:
 
     
     // search related operations
-    void Rebuild();
+    void SearchRebuild();
     std::vector<SearchResult> SearchProducts(const std::string &query, const SearchFilters &filters) const;
 
     // in the public section, under "product related operations"
