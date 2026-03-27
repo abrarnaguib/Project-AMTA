@@ -661,6 +661,33 @@ static void RenderDealerPanel(App &app) {
             ImGui::PopStyleColor(3);
         }
 
+        // Per-product review listing (dealer view)
+        const auto& revs = p.GetReviews();
+        if (!revs.empty()) {
+            ImGui::Spacing();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
+            std::string treeLabel = "  Reviews (" + std::to_string(revs.size()) + ")##drev" + std::to_string(p.GetProductId());
+            if (ImGui::TreeNode(treeLabel.c_str())) {
+                ImGui::Spacing();
+                for (const auto& rev : revs) {
+                    std::string revStars;
+                    for (int i = 1; i <= 5; i++)
+                        revStars += (i <= rev.GetRating() ? "★" : "☆");
+                    ImVec4 revStarCol = (rev.GetRating() >= 4) ? COL_SUCCESS : (rev.GetRating() >= 3 ? COL_WARN : COL_DANGER);
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
+                    ImGui::TextColored(revStarCol, "%s", revStars.c_str());
+                    if (!rev.GetComment().empty()) {
+                        ImGui::SameLine();
+                        ImGui::TextColored(COL_MUTED, u8"\u2014");
+                        ImGui::SameLine();
+                        ImGui::TextWrapped("%s", rev.GetComment().c_str());
+                    }
+                }
+                ImGui::Spacing();
+                ImGui::TreePop();
+            }
+        }
+
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::Spacing();
@@ -994,16 +1021,19 @@ static void RenderProductList (App &app) {
                 ImGui::Spacing();
                 for (const auto& rev : reviews) {
                     std::string revStars;
-                    for (int i = 1; i <= 5; i++)
-                        revStars += (i <= rev.rating ? "★" : "☆");
-                    ImVec4 revStarCol = (rev.rating >= 4) ? COL_SUCCESS : (rev.rating >= 3   ? COL_WARN : COL_DANGER);
+                    for (int i = 1; i <= 5; i++) {
+                        revStars += (i <= rev.GetRating() ? "★" : "☆");
+                    }
+                    ImVec4 revStarCol = (rev.GetRating() >= 4) ? COL_SUCCESS : (rev.GetRating() >= 3 ? COL_WARN : COL_DANGER);
+
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
                     ImGui::TextColored(revStarCol, "%s", revStars.c_str());
-                    if (!rev.comment.empty()) {
+
+                    if (!rev.GetComment().empty()) {
                         ImGui::SameLine();
                         ImGui::TextColored(COL_MUTED, "—");
                         ImGui::SameLine();
-                        ImGui::TextWrapped("%s", rev.comment.c_str());
+                        ImGui::TextWrapped("%s", rev.GetComment().c_str());
                     }
                 }
                 ImGui::Spacing();

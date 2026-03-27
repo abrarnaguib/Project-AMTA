@@ -225,25 +225,55 @@ void Database::LoadNotifications() {
 }
 
 // reads reviews.tsv on startup and loads all reviews into memory
+// format: orderId \t reviewLine
 void Database::LoadReviews() {
     std::ifstream f(ReviewsFile());
     if (!f) return;
     std::string line;
     while (std::getline(f, line)) {
         if (line.empty()) continue;
-        // format: productId \t reviewerId|rating|comment
-        std::istringstream iss(line);
-        std::string tok;
-        std::getline(iss, tok, '\t');
-        int productId = std::stoi(tok);
-        std::string reviewLine;
-        std::getline(iss, reviewLine);
-        Product* p = FindProduct(productId);
-        if (p) {
-            try {
-                p->AddReview(Review::Deserialize(reviewLine));
-            } catch (...) {}
+
+        Review rev;
+        try { 
+            rev = Review::Deserialize(line); 
         }
+        catch (...) { 
+            continue; 
+        }
+
+        Order* o = FindOrder(rev.GetOrderId());
+        if (!o) continue;
+
+        // restore review copies scattered in different places
+        Product* p = FindProduct(o->GetProductId());
+        if (p) { 
+            try { 
+                p->AddReview(rev); 
+            } catch (...) {
+
+            } 
+        }
+
+        Dealer* d = GetDealer(o->GetDealerId());
+        if (d) {
+            Product* dp = d->FindProduct(o->GetProductId());
+            if (dp) { 
+                try {
+                    dp->AddReview(rev); 
+                } 
+                catch (...) {
+
+                } 
+            }
+        }
+
+        Retailer* r = GetRetailer(o->GetRetailerId());
+        if (r) {
+            r->ForceMarkReviewed(rev.GetOrderId());
+        }
+
+        o->SetReviewed(true);
+        o->SetReview(rev);
     }
 }
 
@@ -289,14 +319,24 @@ void Database::SaveNotifications() const {
     }
 }
 
-// writes all in-memory reviews to reviews.tsv
+// writes reviews to reviews.tsv
 void Database::SaveReviews() const {
     std::ofstream f(ReviewsFile());
     if (!f) throw DatabaseException("Cannot open reviews file for writing.");
-    for (const auto& p : m_products) {
-        for (const auto& r : p.GetReviews()) {
-            f << p.GetProductId() << "\t" << r.Serialize() << "\n";
+    for (const auto& o : m_orders) {
+        if (!o.IsReviewed()) {
+            continue;
+        } 
+        Product* p = FindProduct(o.GetProductId());
+        if (!p) {
+            continue;
         }
+        // find the one review that belongs to this order's retailer
+        Review r = o.GetReview();
+        if (r.GetReviewerId() != o.GetRetailerId()) {
+            throw ReviewException("Reviewer id and order's retailer id do not match.");
+        }
+        f << r.Serialize() << "\n";
     }
 }
 
@@ -558,29 +598,27 @@ std::vector<SearchResult> Database::SearchProducts(const std::string &query, con
 
 // --- Review ---
 void Database::SubmitReview(int retailerId, int orderId, int productId, int rating, const std::string& comment) {
-    // Verify the order exists, belongs to this retailer, and is completed
+
     Order* o = FindOrder(orderId);
     if (!o) throw OrderException("Order not found.");
     if (o->GetRetailerId() != retailerId) throw AuthException("Not your order.");
     if (o->GetStatus() != OrderStatus::COMPLETED) throw OrderException("Can only review completed orders.");
 
-    // Verify retailer hasn't already reviewed this order
     Retailer* r = GetRetailer(retailerId);
     if (!r) throw DatabaseException("Retailer not found.");
     if (!r->CanReviewOrder(orderId)) throw ValidationException("You have already reviewed this order.");
 
-    // Add review to the product in global list
     Product* p = FindProduct(productId);
     if (!p) throw ProductException("Product not found.");
 
-    Review rev;
-    rev.reviewerId = retailerId;
-    rev.rating = rating;
-    rev.comment = comment;
+    Review rev(orderId, retailerId, comment, rating);
     p->AddReview(rev);
 
-    // Mark the order as reviewed in retailer's record
     r->MarkOrderReviewed(orderId);
+
+    // Mark the order object itself so SaveReviews knows to persist it
+    o->SetReviewed(true);
+    o->SetReview(rev);
 
     // Update dealer's product copy too
     Dealer* d = GetDealer(o->GetDealerId());
@@ -592,4 +630,3 @@ void Database::SubmitReview(int retailerId, int orderId, int productId, int rati
     SaveReviews();
     SaveUsers(); // retailer's reviewed list updated
 }
-

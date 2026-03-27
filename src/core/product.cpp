@@ -37,51 +37,58 @@ void Product::SetStock(int stock) {
 // Stock methods
 void Product::UpdateStock(int delta) {
     int newStock = m_stock + delta;
-    if (newStock < 0)
+    if (newStock < 0) {
         throw ProductException("Stock cannot go below zero.");
+    }
     m_stock = newStock;
 }
 
 void Product::DeductStock(int quantity) {
-    if (quantity <= 0)
+    if (quantity <= 0) {
         throw ProductException("Quantity to deduct must be positive.");
-    if (quantity > m_stock)
+    }
+    if (quantity > m_stock) {
         throw ProductException("Insufficient stock for product: " + m_name);
+    }
     m_stock -= quantity;
 }
 
 // Review Methods
 void Product::AddReview(const Review &review) {
-    if (review.rating < 1 || review.rating > 5)
-        throw ProductException("Rating must be between 1 and 5.");
     m_reviews.push_back(review);
 }
 
 float Product::GetAvgRating() const {
-    if (m_reviews.empty())
+    if (m_reviews.empty()) {
         return 0.0f;
+    }
     float sum = 0;
-    for (const auto &r : m_reviews)
-        sum += r.rating;
+    for (const auto &r : m_reviews) {
+        sum += r.GetRating();
+    }
     return sum / static_cast<float>(m_reviews.size());
 }
 
 // Constraint Methods
 void Product::ValidatePrice(double price) {
-    if (price < 0.0)
+    if (price < 0.0) {
         throw ProductException("Price cannot be negative.");
+    }
 }
 
 void Product::ValidateStock(int stock) {
-    if (stock < 0)
+    if (stock < 0) {
         throw ProductException("Stock cannot be negative.");
+    }
 }
 
 void Product::ValidateName(const std::string &name) {
-    if (name.empty())
+    if (name.empty()) {
         throw ProductException("Product name cannot be empty.");
-    if (name.size() > 120)
+    }
+    if (name.size() > 120) {
         throw ProductException("Product name too long (max 120 chars).");
+    }
 }
 
 // Product Parsers for database (.tsv based)
@@ -118,26 +125,4 @@ std::string Product::ToString() const {
     oss << "[" << m_productId << "] " << m_name << " | Category: " << m_category << " | Price: " << std::fixed << std::setprecision(2) << m_price
         << " BDT | Stock: " << m_stock << " | Rating: " << std::setprecision(1) << GetAvgRating() << "/5";
     return oss.str();
-}
-
-// Review Parsers for Database
-std::string Review::Serialize() const {
-    std::ostringstream oss;
-    std::string safe = comment;
-    std::replace(safe.begin(), safe.end(), '|', ' ');
-    oss << reviewerId << "|" << rating << "|" << safe;
-    return oss.str();
-}
-
-Review Review::Deserialize(const std::string &line) {
-    std::istringstream iss(line);
-    std::string token;
-    Review r;
-    std::getline(iss, token, '|');
-    r.reviewerId = std::stoi(token);
-    std::getline(iss, token, '|');
-    r.rating = std::stoi(token);
-    std::getline(iss, token);
-    r.comment = token;
-    return r;
 }
