@@ -2,7 +2,8 @@
 #include <sstream>
 
 Order::Order(int orderId, int retailerId, int dealerId, int productId, int quantity)
-            : m_orderId(orderId), m_retailerId(retailerId), m_dealerId(dealerId), m_productId(productId), m_quantity(quantity), m_status(OrderStatus::PENDING) 
+            : m_orderId(orderId), m_retailerId(retailerId), m_dealerId(dealerId), m_productId(productId), 
+              m_quantity(quantity), m_status(OrderStatus::PENDING), m_isReviewed(false) 
 {
     ValidateQuantity(quantity);
     if (retailerId <= 0) {

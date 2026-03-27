@@ -1,4 +1,5 @@
 #include "database.h"
+#include "search_engine.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -21,6 +22,9 @@ std::string Database::OrdersFile() const {
 }
 std::string Database::NotificationsFile() const {
      return m_dataDir + "/notifications.tsv"; 
+}
+std::string Database::ReviewsFile() const {
+    return m_dataDir + "/reviews.tsv";
 }
 
 
@@ -63,6 +67,18 @@ void Database::LoadAll() {
     catch (...) {
 
     }
+    try { 
+        LoadReviews(); 
+    } 
+    catch (...) {
+
+    }
+    try {
+        SearchRebuild();
+    }
+    catch (const SearchException &e) {
+        std::cerr << "[App] Search index rebuild failed while loading for the first time: " << e.what() << '\n';
+    }
 }
 
 // saves back in .tsv format
@@ -72,6 +88,7 @@ void Database::SaveAll() const {
     SaveProducts();
     SaveOrders();
     SaveNotifications();
+    SaveReviews();
 }
 
 // reads from the .tsv file format
@@ -186,7 +203,7 @@ void Database::LoadOrders() {
     for (const auto& o : m_orders) {
         Dealer* d = GetDealer(o.GetDealerId());
         Retailer* r = GetRetailer(o.GetRetailerId());
-        if (d && o.GetStatus() != OrderStatus::COMPLETED) {
+        if (d && (o.GetStatus() != OrderStatus::COMPLETED && o.GetStatus() != OrderStatus::REJECTED)) {
             d->AddIncomingOrder(o);
         }
         if (r) {
@@ -215,6 +232,59 @@ void Database::LoadNotifications() {
         if (n.GetNotificationId() >= m_nextNotificationId) {
             m_nextNotificationId = n.GetNotificationId() + 1;
         }
+    }
+}
+
+// reads reviews.tsv on startup and loads all reviews into memory
+// format: orderId \t reviewLine
+void Database::LoadReviews() {
+    std::ifstream f(ReviewsFile());
+    if (!f) return;
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty()) continue;
+
+        Review rev;
+        try { 
+            rev = Review::Deserialize(line); 
+        }
+        catch (...) { 
+            continue; 
+        }
+
+        Order* o = FindOrder(rev.GetOrderId());
+        if (!o) continue;
+
+        // restore review copies scattered in different places
+        Product* p = FindProduct(o->GetProductId());
+        if (p) { 
+            try { 
+                p->AddReview(rev); 
+            } catch (...) {
+
+            } 
+        }
+
+        Dealer* d = GetDealer(o->GetDealerId());
+        if (d) {
+            Product* dp = d->FindProduct(o->GetProductId());
+            if (dp) { 
+                try {
+                    dp->AddReview(rev); 
+                } 
+                catch (...) {
+
+                } 
+            }
+        }
+
+        Retailer* r = GetRetailer(o->GetRetailerId());
+        if (r) {
+            r->ForceMarkReviewed(rev.GetOrderId());
+        }
+
+        o->SetReviewed(true);
+        o->SetReview(rev);
     }
 }
 
@@ -257,6 +327,27 @@ void Database::SaveNotifications() const {
     if (!f) throw DatabaseException("Cannot open notifications file for writing.");
     for (const auto& n : m_notifications) {
         f << n.Serialize() << "\n";
+    }
+}
+
+// writes reviews to reviews.tsv
+void Database::SaveReviews() const {
+    std::ofstream f(ReviewsFile());
+    if (!f) throw DatabaseException("Cannot open reviews file for writing.");
+    for (const auto& o : m_orders) {
+        if (!o.IsReviewed()) {
+            continue;
+        } 
+        Product* p = FindProduct(o.GetProductId());
+        if (!p) {
+            continue;
+        }
+        // find the one review that belongs to this order's retailer
+        Review r = o.GetReview();
+        if (r.GetReviewerId() != o.GetRetailerId()) {
+            throw ReviewException("Reviewer id and order's retailer id do not match.");
+        }
+        f << r.Serialize() << "\n";
     }
 }
 
@@ -354,6 +445,13 @@ Product* Database::AddProduct(int dealerId, const std::string &name, const std::
     Product* p = &m_products.back();
     d->AddProduct(*p);
     SaveAll();
+    // newly_updated
+    try {
+        SearchRebuild();
+    }
+    catch (const SearchException &e) {
+        std::cerr << "[App] Search index rebuild failed afted AddProduct: " << e.what() << '\n';
+    }
     return p;
 }
 // finds the product, deletes from both dealer's list as well as global list
@@ -370,6 +468,13 @@ void Database::DeleteProduct(int productId) {
     }
     m_products.erase(it);
     SaveAll();
+    // newly_updated
+    try {
+        SearchRebuild();
+    }
+    catch (const SearchException &e) {
+        std::cerr << "[App] Search index rebuild failed afted DeleteProduct: " << e.what() << '\n';
+    }
 }
 // looks for all product and returns the matching one
 Product* Database::FindProduct(int productId) const {
@@ -397,6 +502,11 @@ Order* Database::PlaceOrder(int retailerId, int dealerId, int productId, int qua
         throw DatabaseException("Product ID " + std::to_string(productId) + " not found.\n");
     }
     p->DeductStock(quantity);
+
+    // Sync stock deduction to dealer's own product copy so dashboard updates immediately
+    Product* dp = d->FindProduct(productId);
+    if (dp) dp->DeductStock(quantity);
+
     m_orders.push_back({m_nextOrderId++, retailerId, dealerId, productId, quantity});
     Order* o = &m_orders.back();
     d->AddIncomingOrder(*o);
@@ -424,6 +534,12 @@ void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
         o->Reject();
         d->RespondToOrder(orderId, OrderStatus::REJECTED);
         r->RespondToOrder(orderId, OrderStatus::REJECTED);
+
+        // Restore stock on both global and dealer's copy when rejected
+        Product* gp = FindProduct(o->GetProductId());
+        if (gp) gp->UpdateStock(o->GetQuantity());
+        Product* dp = d->FindProduct(o->GetProductId());
+        if (dp) dp->UpdateStock(o->GetQuantity());
     }
     SaveAll();
 }
@@ -479,4 +595,75 @@ void Database::MarkNotificationRead(int notificationId) {
         }
     }
     throw NotificationException("Notification ID " + std::to_string(notificationId) + " not found.\n");
+}
+
+
+// returns pointers to notifications for a specific user, newest first
+std::vector<const Notification*> Database::GetNotificationsForUser(int userId) const {
+    std::vector<const Notification*> result;
+    for (const auto& n : m_notifications) {
+        if (n.GetRecipientUserId() == userId) {
+            result.push_back(&n);
+        }
+    }
+    // reverse so newest comes first
+    std::reverse(result.begin(), result.end());
+    return result;
+}
+
+
+// sends a plain message notification (no order attached) for future messaging feature
+Notification* Database::SendMessage(int recipientId, const std::string& msg) {
+    if (!FindUserById(recipientId)) {
+        throw DatabaseException("Recipient user ID " + std::to_string(recipientId) + " not found.\n");
+    }
+    // orderId = -1 signals no associated order
+    m_notifications.emplace_back(m_nextNotificationId++, recipientId, NotificationType::MESSAGE, -1, msg);
+    Notification* n = &m_notifications.back();
+    SaveNotifications();
+    return n;
+}
+
+// --- Search ---
+void Database::SearchRebuild() {
+    m_search.Rebuild(m_products);
+}
+
+std::vector<SearchResult> Database::SearchProducts(const std::string &query, const SearchFilters &filters) const {
+    return m_search.Search(query, filters, m_products);
+}
+
+// --- Review ---
+void Database::SubmitReview(int retailerId, int orderId, int productId, int rating, const std::string& comment) {
+
+    Order* o = FindOrder(orderId);
+    if (!o) throw OrderException("Order not found.");
+    if (o->GetRetailerId() != retailerId) throw AuthException("Not your order.");
+    if (o->GetStatus() != OrderStatus::COMPLETED) throw OrderException("Can only review completed orders.");
+
+    Retailer* r = GetRetailer(retailerId);
+    if (!r) throw DatabaseException("Retailer not found.");
+    if (!r->CanReviewOrder(orderId)) throw ValidationException("You have already reviewed this order.");
+
+    Product* p = FindProduct(productId);
+    if (!p) throw ProductException("Product not found.");
+
+    Review rev(orderId, retailerId, comment, rating);
+    p->AddReview(rev);
+
+    r->MarkOrderReviewed(orderId);
+
+    // Mark the order object itself so SaveReviews knows to persist it
+    o->SetReviewed(true);
+    o->SetReview(rev);
+
+    // Update dealer's product copy too
+    Dealer* d = GetDealer(o->GetDealerId());
+    if (d) {
+        Product* dp = d->FindProduct(productId);
+        if (dp) dp->AddReview(rev);
+    }
+
+    SaveReviews();
+    SaveUsers(); // retailer's reviewed list updated
 }

@@ -52,15 +52,20 @@ void Dealer::SetLocation(const std::string &loc)
 }
 
 // Getters
-float Dealer::GetRating() const
-{
-    if (m_reviews.empty())
-        return 0.0f;
-    float sum = 0;
-    for (const auto &r : m_reviews)
-        sum += r.rating;
-    return sum / static_cast<float>(m_reviews.size());
+float Dealer::GetRating() const {
+    if (m_products.empty()) return 0.0f;
+    float total = 0.0f;
+    int count = 0;
+    for (const auto& p : m_products) {
+        for (const auto& r : p.GetReviews()) {
+            total += r.GetRating();
+            count++;
+        }
+    }
+    if (count == 0) return 0.0f;
+    return total / static_cast<float>(count);
 }
+
 
 // Product Management
 void Dealer::AddProduct(const Product &product)
@@ -121,12 +126,7 @@ void Dealer::RespondToOrder(int orderId, OrderStatus status)
 // Review Management
 void Dealer::AddReview(int reviewerId, int rating, const std::string &comment)
 {
-    if (rating < 1 || rating > 5)
-        throw ValidationException("Rating must be between 1 and 5.");
-    Review r;
-    r.reviewerId = reviewerId;
-    r.rating = rating;
-    r.comment = comment;
+    Review r(-1, reviewerId, comment, rating);
     m_reviews.push_back(r);
 }
 

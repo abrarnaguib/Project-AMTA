@@ -1,6 +1,5 @@
 #pragma once
 #include "database.h"
-#include "notification.h"
 #include <string>
 #include <vector>
 
@@ -21,7 +20,7 @@ struct AppState
         PLACE_ORDER
     };
     Page currentPage = Page::HOME;
-
+    
     // Feedback messages shown in GUI
     std::string infoMessage;
     std::string errorMessage;
@@ -38,7 +37,7 @@ class App
 private:
     Database m_db;
     AppState m_state;
-
+    
 public:
     App();
 
@@ -59,11 +58,17 @@ public:
     bool AcceptOrder(int orderId);
     bool RejectOrder(int orderId);
     bool CompleteOrder(int orderId);
+    bool SubmitReview(int orderId, int productId, int rating, const std::string& comment);
 
     // Notification actions
     int UnreadNotificationCount() const;
     void MarkNotificationRead(int notificationId);
+    bool SendMessage(int recipientId, const std::string &msg);   // for future messaging
+    std::vector<const Notification*> GetNotificationsForUser() const; // for current logged-in user
     
+    // updated: Search actions
+    std::vector<SearchResult> SearchProducts (const std::string &query, const SearchFilters &filters) const;
+
     // Accessors
     AppState &GetState() { return m_state; }
     Database &GetDatabase() { return m_db; }

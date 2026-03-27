@@ -16,7 +16,8 @@ enum class NotificationType
     ORDER_PLACED,
     ORDER_ACCEPTED,
     ORDER_REJECTED,
-    ORDER_COMPLETED
+    ORDER_COMPLETED,
+    MESSAGE             // for future dealer-retailer messaging
 };
 
 std::string NotificationTypeToString(NotificationType type);
@@ -37,7 +38,12 @@ private:
     static void ValidateMessage(const std::string &msg);
 
 public:
+    // orderId = -1 means no associated order (e.g. a plain message)
     Notification(int nid, int recipientId, NotificationType t, int oid, const std::string &msg);
+
+    // Convenience constructor for message-type notifications (no order)
+    Notification(int nid, int recipientId, NotificationType t, const std::string &msg)
+        : Notification(nid, recipientId, t, -1, msg) {}
 
     int GetNotificationId() const { 
         return m_notificationId; 
@@ -51,6 +57,9 @@ public:
     int GetOrderId() const { 
         return m_orderId; 
     }
+    bool HasOrder() const { 
+        return m_orderId != -1; 
+    }  // false for MESSAGE type
     std::string GetMessage() const { 
         return m_message; 
     }

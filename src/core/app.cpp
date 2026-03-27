@@ -105,6 +105,7 @@ bool App::DeleteProduct(int productId)
     try
     {
         m_db.DeleteProduct(productId);
+        
         m_state.infoMessage = "Product deleted.";
         return true;
     }
@@ -132,6 +133,14 @@ bool App::UpdateProduct(int productId, double newPrice, int newStock)
             return false;
         }
         d->UpdateProduct(productId, newPrice, newStock);
+
+        // Sync to global m_products so product list page also reflects the change
+        Product* gp = m_db.FindProduct(productId);
+        if (gp) { 
+            gp->SetPrice(newPrice); 
+            gp->SetStock(newStock); 
+        }
+
         m_db.SaveAll();
         m_state.infoMessage = "Product updated.";
         return true;
@@ -233,9 +242,6 @@ bool App::RejectOrder(int orderId)
         std::string productName = p->GetName();
 
         m_db.RespondToOrder(orderId, m_state.currentUser->GetUserId(), false);
-        
-        // add the ordered amount to stock
-        if (p) p->SetStock(p->GetStock() + o->GetQuantity());
 
         // Notifies the retailer that their order has been rejected by the dealer
         m_db.AddNotification(
@@ -298,14 +304,71 @@ int App::UnreadNotificationCount() const {
     if (!m_state.isLoggedIn) return 0;
     int uid = m_state.currentUser->GetUserId();
     int count = 0;
-    for (const auto& n : m_db.GetAllNotifications())
+    for (const auto& n : m_db.GetAllNotifications()) {
         if (n.GetRecipientUserId() == uid && !n.IsRead()) {
             ++count;
         }
+    }
     return count;
 }
 
 // Marks a specific notification as read by its ID
 void App::MarkNotificationRead(int notificationId) {
     m_db.MarkNotificationRead(notificationId);
+}
+
+// Returns notifications for the currently logged-in user, newest first
+std::vector<const Notification*> App::GetNotificationsForUser() const {
+    if (!m_state.isLoggedIn) {
+        return {};
+    }
+    return m_db.GetNotificationsForUser(m_state.currentUser->GetUserId());
+}
+
+
+// Sends a plain message notification to another user (no order attached)
+bool App::SendMessage(int recipientId, const std::string &msg) {
+    m_state.ClearMessages();
+    try {
+        m_db.SendMessage(recipientId, msg);
+        m_state.infoMessage = "Message sent.";
+        return true;
+    }
+    catch (const std::exception &e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
+}
+
+// Review
+bool App::SubmitReview(int orderId, int productId, int rating, const std::string& comment) {
+    m_state.ClearMessages();
+    if (!m_state.isLoggedIn || m_state.currentUser->GetRole() != UserRole::RETAILER) {
+        m_state.errorMessage = "Only retailers can submit reviews.";
+        return false;
+    }
+    try {
+        m_db.SubmitReview(m_state.currentUser->GetUserId(), orderId, productId, rating, comment);
+        m_state.infoMessage = "Review submitted!";
+        return true;
+    } catch (const std::exception& e) {
+        m_state.errorMessage = e.what();
+        return false;
+    }
+}
+
+// newly_updated
+std::vector<SearchResult> App::SearchProducts(const std::string &query, const SearchFilters &filters) const {
+    try {
+        // newly_updated
+        return m_db.SearchProducts(query, filters);
+    }
+    catch (const SearchNotBuiltException& e) {
+        std::cerr << "[App] " << e.what() << '\n';
+        return {};
+    }
+    catch (const SearchFilterException& e) {
+        std::cerr << "[App] " << e.what() << '\n';
+        return {};
+    }
 }
