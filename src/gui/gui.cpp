@@ -672,7 +672,7 @@ static void RenderDealerPanel(App &app) {
                 for (const auto& rev : revs) {
                     std::string revStars;
                     for (int i = 1; i <= 5; i++)
-                        revStars += (i <= rev.GetRating() ? "★" : "☆");
+                        revStars += (i <= rev.GetRating() ? u8"\u2605" : u8"\u2606");
                     ImVec4 revStarCol = (rev.GetRating() >= 4) ? COL_SUCCESS : (rev.GetRating() >= 3 ? COL_WARN : COL_DANGER);
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 12.0f);
                     ImGui::TextColored(revStarCol, "%s", revStars.c_str());
@@ -868,7 +868,7 @@ static void RenderRetailerPanel(App &app) {
         ImGui::SameLine();
         std::string stars;
         for (int i = 1; i <= 5; i++) {
-              stars += (i <= reviewRating ? "★" : "☆");
+              stars += (i <= reviewRating ? u8"\u2605" : u8"\u2606");
         }
         ImVec4 starCol = (reviewRating >= 4) ? COL_SUCCESS : (reviewRating >= 3 ? COL_WARN : COL_DANGER);
         ImGui::TextColored(starCol, "%s", stars.c_str());
@@ -967,23 +967,22 @@ static void RenderProductList (App &app) {
         ImGui::PushID(p.GetProductId());
         ImGui::PushStyleColor(ImGuiCol_ChildBg, COL_DIM_BG_CARD);
 
-        float cardH;
-        if (hasReviews) {
-            cardH = 0.0f;
-        }
-        else {
-            cardH = 75.0f;
-        }
-        ImGui::BeginChild("##plist", {0, cardH}, ImGuiChildFlags_Borders | (hasReviews ? ImGuiChildFlags_AutoResizeY : 0));
+        ImGui::BeginChild("##plist", {0, 0}, ImGuiChildFlags_Borders |  ImGuiChildFlags_AutoResizeY);
 
         ImGui::Spacing();
         ImGui::TextColored(COL_ACCENT, "  [%d] %s", p.GetProductId(), p.GetName().c_str());
         ImGui::SameLine(500);
 
         ImVec4 rCol;
-        if (sr.avgRating >= 4.0f)      rCol = COL_SUCCESS;
-        else if (sr.avgRating >= 2.5f) rCol = COL_WARN;
-        else                           rCol = COL_DANGER;
+        if (sr.avgRating >= 4.0f) {
+              rCol = COL_SUCCESS;
+        }   
+        else if (sr.avgRating >= 2.5f) {
+            rCol = COL_WARN;
+        }
+        else {
+            rCol = COL_DANGER;
+        }   
 
         if (hasReviews) {
             ImGui::TextColored(rCol, "★ %.1f  (%d review%s)", sr.avgRating, (int)reviews.size(), reviews.size() == 1 ? "" : "s");
@@ -1022,7 +1021,7 @@ static void RenderProductList (App &app) {
                 for (const auto& rev : reviews) {
                     std::string revStars;
                     for (int i = 1; i <= 5; i++) {
-                        revStars += (i <= rev.GetRating() ? "★" : "☆");
+                        revStars += (i <= rev.GetRating() ? u8"\u2605" : u8"\u2606");
                     }
                     ImVec4 revStarCol = (rev.GetRating() >= 4) ? COL_SUCCESS : (rev.GetRating() >= 3 ? COL_WARN : COL_DANGER);
 

@@ -133,6 +133,14 @@ bool App::UpdateProduct(int productId, double newPrice, int newStock)
             return false;
         }
         d->UpdateProduct(productId, newPrice, newStock);
+
+        // Sync to global m_products so product list page also reflects the change
+        Product* gp = m_db.FindProduct(productId);
+        if (gp) { 
+            gp->SetPrice(newPrice); 
+            gp->SetStock(newStock); 
+        }
+
         m_db.SaveAll();
         m_state.infoMessage = "Product updated.";
         return true;
@@ -234,9 +242,6 @@ bool App::RejectOrder(int orderId)
         std::string productName = p->GetName();
 
         m_db.RespondToOrder(orderId, m_state.currentUser->GetUserId(), false);
-        
-        // add the ordered amount to stock
-        if (p) p->SetStock(p->GetStock() + o->GetQuantity());
 
         // Notifies the retailer that their order has been rejected by the dealer
         m_db.AddNotification(

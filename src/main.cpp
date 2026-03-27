@@ -30,7 +30,13 @@ int main() {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
+    // Add your font — adjust path based on where your exe runs from
+    // For your project structure (exe at build/src/) this path goes to project root
+    io.Fonts->AddFontFromFileTTF("../../assets/fonts/ttf/JetBrainsMonoNL-BoldItalic.ttf", 18.0f);
+    
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     
     #ifdef __APPLE__

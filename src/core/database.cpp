@@ -502,6 +502,11 @@ Order* Database::PlaceOrder(int retailerId, int dealerId, int productId, int qua
         throw DatabaseException("Product ID " + std::to_string(productId) + " not found.\n");
     }
     p->DeductStock(quantity);
+
+    // Sync stock deduction to dealer's own product copy so dashboard updates immediately
+    Product* dp = d->FindProduct(productId);
+    if (dp) dp->DeductStock(quantity);
+
     m_orders.push_back({m_nextOrderId++, retailerId, dealerId, productId, quantity});
     Order* o = &m_orders.back();
     d->AddIncomingOrder(*o);
@@ -529,6 +534,12 @@ void Database::RespondToOrder(int orderId, int dealerId, bool accept) {
         o->Reject();
         d->RespondToOrder(orderId, OrderStatus::REJECTED);
         r->RespondToOrder(orderId, OrderStatus::REJECTED);
+
+        // Restore stock on both global and dealer's copy when rejected
+        Product* gp = FindProduct(o->GetProductId());
+        if (gp) gp->UpdateStock(o->GetQuantity());
+        Product* dp = d->FindProduct(o->GetProductId());
+        if (dp) dp->UpdateStock(o->GetQuantity());
     }
     SaveAll();
 }

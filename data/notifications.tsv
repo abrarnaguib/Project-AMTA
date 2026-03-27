@@ -30,3 +30,8 @@
 30	2	ORDER_REJECTED	8	1	Your order #8 for 'one piece vol2' was REJECTED by 'user2'.
 31	1	ORDER_COMPLETED	6	0	Order #6 for 'one piece vol1' marked COMPLETED by 'user1'.
 32	1	ORDER_COMPLETED	7	0	Order #7 for 'one piece vol2' marked COMPLETED by 'user1'.
+33	1	ORDER_PLACED	9	0	New order #9: 9x 'one piece vol2' from 'user1'.
+34	2	ORDER_ACCEPTED	9	0	Your order #9 for 'one piece vol2' was ACCEPTED by 'user2'.
+35	1	ORDER_COMPLETED	9	0	Order #9 for 'one piece vol2' marked COMPLETED by 'user1'.
+36	1	ORDER_PLACED	10	0	New order #10: 1x 'one piece vol1' from 'user1'.
+37	2	ORDER_REJECTED	10	0	Your order #10 for 'one piece vol1' was REJECTED by 'user2'.
